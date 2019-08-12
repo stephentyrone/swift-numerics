@@ -18,6 +18,7 @@ let package = Package(
     .library(name: "Complex", targets: ["Complex"]),
     .library(name: "Numerics", targets: ["Numerics"]),
     .library(name: "Real", targets: ["Real"]),
+    .library(name: "StaticArray", targets: ["StaticArray"])
   ],
   dependencies: [
   ],
@@ -26,8 +27,10 @@ let package = Package(
     .target(name: "Numerics", dependencies: ["Complex", "Real"]),
     .target(name: "NumericsShims", dependencies: []),
     .target(name: "Real", dependencies: ["NumericsShims"]),
+    .target(name: "StaticArray", dependencies: []),
     
     .testTarget(name: "ComplexTests", dependencies: ["Complex", "NumericsShims"]),
     .testTarget(name: "RealTests", dependencies: ["Real"]),
+    .testTarget(name: "StaticArrayTests", dependencies: ["StaticArray"]),
   ]
 )
