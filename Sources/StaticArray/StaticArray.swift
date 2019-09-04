@@ -24,10 +24,10 @@ public protocol StaticArray: RandomAccessCollection, MutableCollection where Ind
   /// It is an error if the iterator runs out of values before this container is full. It is *not* an error for the
   /// iterator to yeild more elements than the container allows. This initializer is a detail used to implement
   /// `init<S:Sequence>(_: S)` and `init(_: (Int) -> Element)`.
-  ///
-  /// This initializer should write to each element of the collection only once; it should *not* operate by
-  /// first initializing the whole collection and then setting the values.
   init<I>(_iterator iter: inout I) where I: IteratorProtocol, I.Element == Element
+  
+  /// Initialize with a function mapping from index to element value.
+  init(_startIndex: Int, _ function: (Int) -> Element)
 }
 
 // MARK: - Functionality introduced by conformance to StaticArray
@@ -45,13 +45,18 @@ extension StaticArray {
     0 ..< count
   }
   
-  /// Constructs an aggregate with the elements `(0..<count).map(function)`.
-  @inlinable
-  public init(_ function: (Int) -> Element) {
-    self.init(Self.indices.lazy.map(function))
+  /// Constructs an aggregate with the specified element repeated.
+  @_transparent
+  public init(repeating value: Element) {
+    self.init({ _ in value })
   }
   
-  @inlinable
+  @_transparent
+  public init(_ function: (Int) -> Element) {
+    self.init(_startIndex: 0, function)
+  }
+  
+  @_transparent
   public init<S>(_ sequence: S) where S: Sequence, S.Element == Element {
     var iter = sequence.makeIterator()
     self.init(_iterator: &iter)
@@ -110,6 +115,27 @@ extension StaticArray {
   }
 }
 
+// MARK: - Hashable / Equatable when Element is
+extension StaticArray where Element: Equatable {
+  @_transparent
+  public static func ==(_ a: Self, _ b: Self) -> Bool {
+    var result = true
+    for i in indices {
+      if a[i] != b[i] { result = false }
+    }
+    return result
+  }
+}
+
+extension StaticArray where Element: Hashable {
+  @_transparent
+  public func hash(into hasher: inout Hasher) {
+    for i in indices {
+      hasher.combine(self[i])
+    }
+  }
+}
+
 /// A fixed-size array holding exactly one element.
 ///
 /// You'll rarely use this directly,; it's a necessary base case to build larger fixed-size aggregates.
@@ -118,11 +144,16 @@ public struct Array1<Element>: StaticArray {
   public typealias Index = Int
   
   @usableFromInline
-  internal var value: Element
+  internal var storage: Element
+  
+  @_transparent
+  public init(_startIndex: Int, _ function: (Int) -> Element) {
+    storage = function(_startIndex)
+  }
   
   @_transparent
   public init<I>(_iterator iter: inout I) where I : IteratorProtocol, Element == I.Element {
-    value = iter.next()!
+    storage = iter.next()!
   }
 }
 
@@ -132,6 +163,8 @@ public struct Array1<Element>: StaticArray {
 @frozen
 public struct Adjoin<A: StaticArray, B: StaticArray>: StaticArray
 where A.Element == B.Element {
+  public typealias Index = Int
+  public typealias Element = A.Element
   
   @usableFromInline
   internal var a: A
@@ -139,8 +172,11 @@ where A.Element == B.Element {
   @usableFromInline
   internal var b: B
   
-  public typealias Index = Int
-  public typealias Element = A.Element
+  @_transparent
+  public init(_startIndex: Int, _ function: (Int) -> Element) {
+    a = A(_startIndex: _startIndex, function)
+    b = B(_startIndex: _startIndex + A.count, function)
+  }
   
   @_transparent
   public init<I>(_iterator iter: inout I) where I : IteratorProtocol, Element == I.Element {

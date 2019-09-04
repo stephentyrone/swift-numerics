@@ -52,7 +52,7 @@ final class StaticArrayTests: XCTestCase {
     func f(_ i: Int) -> A.Element { A.Element(truncatingIfNeeded: i) &+ slide }
     let a = A(f)
     if let i = A.indices.first(where: { a[$0] != f($0) }) {
-      XCTFail("Wrong value for element \(i). Expected \(f(i)), found \(a[i]).")
+      XCTFail("Wrong value for element \(i) of \(A.self). Expected \(f(i)), found \(a[i]).")
     }
   }
   
