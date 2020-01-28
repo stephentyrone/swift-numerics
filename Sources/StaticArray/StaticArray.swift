@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift project authors
+// Copyright (c) 2019-2020 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -12,8 +12,9 @@
 
 /// A fixed-size object that can be interpreted as a collection of `count`x`Element`.
 ///
-/// The underlying storage for a type conforming to this protocol can be anything, subject to the following
-/// requirement that it have the same size and alignment as a tuple of `count` `Element`s.
+/// The underlying storage for a type conforming to this protocol can be "anything", subject to the
+/// requirement that it is actually composed of `count` `Element`s laid out contiguously in memory.
+/// Storage definitions for 1 ... 16 element StaticArrays are provided for you below.
 ///
 /// All necessary methods for RandomAccess and MutableCollection are defaulted, as well as a
 /// `subscript[unchecked:]` and the `withUnsafe[Mutable]BufferPointer` methods.
@@ -29,6 +30,77 @@ public protocol StaticArray: RandomAccessCollection, MutableCollection where Ind
   /// Initialize with a function mapping from index to element value.
   init(_startIndex: Int, _ function: (Int) -> Element)
 }
+
+/// A fixed-size array holding exactly one element.
+///
+/// You'll rarely use this directly,; it's a necessary base case to build larger fixed-size aggregates.
+@frozen
+public struct Array1<Element>: StaticArray {
+  public typealias Index = Int
+  
+  @usableFromInline
+  internal var storage: Element
+  
+  @_transparent
+  public init(_startIndex: Int, _ function: (Int) -> Element) {
+    storage = function(_startIndex)
+  }
+  
+  @_transparent
+  public init<I>(_iterator iter: inout I) where I : IteratorProtocol, Element == I.Element {
+    storage = iter.next()!
+  }
+}
+
+extension Array1: Equatable where Element: Equatable { }
+extension Array1: Hashable where Element: Hashable { }
+
+/// Adjoins two StaticArrays with the same element type to form a larger aggregate.
+///
+/// You'll rarely use this directly; we use it to build up useful types that we give meaningful names.
+@frozen
+public struct Adjoin<A: StaticArray, B: StaticArray>: StaticArray
+where A.Element == B.Element {
+  public typealias Index = Int
+  public typealias Element = A.Element
+  
+  @usableFromInline
+  internal var a: A
+  
+  @usableFromInline
+  internal var b: B
+  
+  @_transparent
+  public init(_startIndex: Int, _ function: (Int) -> Element) {
+    a = A(_startIndex: _startIndex, function)
+    b = B(_startIndex: _startIndex + A.count, function)
+  }
+  
+  @_transparent
+  public init<I>(_iterator iter: inout I) where I : IteratorProtocol, Element == I.Element {
+    a = A(_iterator: &iter)
+    b = B(_iterator: &iter)
+  }
+}
+
+extension Adjoin: Equatable where Element: Equatable { }
+extension Adjoin: Hashable where Element: Hashable { }
+
+public typealias  Array2<Element> = Adjoin<Array1<Element>, Array1<Element>>
+public typealias  Array3<Element> = Adjoin<Array2<Element>, Array1<Element>>
+public typealias  Array4<Element> = Adjoin<Array2<Element>, Array2<Element>>
+public typealias  Array5<Element> = Adjoin<Array4<Element>, Array1<Element>>
+public typealias  Array6<Element> = Adjoin<Array4<Element>, Array2<Element>>
+public typealias  Array7<Element> = Adjoin<Array4<Element>, Array3<Element>>
+public typealias  Array8<Element> = Adjoin<Array4<Element>, Array4<Element>>
+public typealias  Array9<Element> = Adjoin<Array8<Element>, Array1<Element>>
+public typealias Array10<Element> = Adjoin<Array8<Element>, Array2<Element>>
+public typealias Array11<Element> = Adjoin<Array8<Element>, Array3<Element>>
+public typealias Array12<Element> = Adjoin<Array8<Element>, Array4<Element>>
+public typealias Array13<Element> = Adjoin<Array8<Element>, Array5<Element>>
+public typealias Array14<Element> = Adjoin<Array8<Element>, Array6<Element>>
+public typealias Array15<Element> = Adjoin<Array8<Element>, Array7<Element>>
+public typealias Array16<Element> = Adjoin<Array8<Element>, Array8<Element>>
 
 // MARK: - Functionality introduced by conformance to StaticArray
 extension StaticArray {
@@ -75,9 +147,10 @@ extension StaticArray {
     _ body: (UnsafeBufferPointer<Element>) throws -> R
   ) rethrows -> R {
     try withUnsafePointer(to: self) {
-      try $0.withMemoryRebound(to: Element.self, capacity: Self.count) {
-        try body(UnsafeBufferPointer<Element>(start: $0, count:  Self.count))
-      }
+      try body(UnsafeBufferPointer<Element>(
+        start: UnsafeRawPointer($0).assumingMemoryBound(to: Element.self),
+        count: Self.count
+      ))
     }
   }
   
@@ -86,9 +159,10 @@ extension StaticArray {
     _ body: (UnsafeMutableBufferPointer<Element>) throws -> R
   ) rethrows -> R {
     try withUnsafeMutablePointer(to: &self) {
-      try $0.withMemoryRebound(to: Element.self, capacity:  Self.count) {
-        try body(UnsafeMutableBufferPointer<Element>(start: $0, count: Self.count))
-      }
+      try body(UnsafeMutableBufferPointer<Element>(
+        start: UnsafeMutableRawPointer($0).assumingMemoryBound(to: Element.self),
+        count: Self.count
+      ))
     }
   }
 }
@@ -104,18 +178,18 @@ extension StaticArray {
   public subscript(index: Int) -> Element {
     @_transparent
     get {
-      precondition(index >= startIndex && index <= endIndex)
+      precondition(indices.contains(index))
       return self[unchecked: index]
     }
     @_transparent
     set {
-      precondition(index >= startIndex && index <= endIndex)
+      precondition(indices.contains(index))
       self[unchecked: index] = newValue
     }
   }
 }
 
-// MARK: - Hashable / Equatable when Element is
+// MARK: - Define Hashable / Equatable operations when Element conforms.
 extension StaticArray where Element: Equatable {
   @_transparent
   public static func ==(_ a: Self, _ b: Self) -> Bool {
@@ -135,68 +209,3 @@ extension StaticArray where Element: Hashable {
     }
   }
 }
-
-/// A fixed-size array holding exactly one element.
-///
-/// You'll rarely use this directly,; it's a necessary base case to build larger fixed-size aggregates.
-@frozen
-public struct Array1<Element>: StaticArray {
-  public typealias Index = Int
-  
-  @usableFromInline
-  internal var storage: Element
-  
-  @_transparent
-  public init(_startIndex: Int, _ function: (Int) -> Element) {
-    storage = function(_startIndex)
-  }
-  
-  @_transparent
-  public init<I>(_iterator iter: inout I) where I : IteratorProtocol, Element == I.Element {
-    storage = iter.next()!
-  }
-}
-
-/// Adjoins two StaticArrays with the same element type to form a larger aggregate.
-///
-/// You'll rarely use this directly; we use it to build up useful types that we give meaningful names.
-@frozen
-public struct Adjoin<A: StaticArray, B: StaticArray>: StaticArray
-where A.Element == B.Element {
-  public typealias Index = Int
-  public typealias Element = A.Element
-  
-  @usableFromInline
-  internal var a: A
-  
-  @usableFromInline
-  internal var b: B
-  
-  @_transparent
-  public init(_startIndex: Int, _ function: (Int) -> Element) {
-    a = A(_startIndex: _startIndex, function)
-    b = B(_startIndex: _startIndex + A.count, function)
-  }
-  
-  @_transparent
-  public init<I>(_iterator iter: inout I) where I : IteratorProtocol, Element == I.Element {
-    a = A(_iterator: &iter)
-    b = B(_iterator: &iter)
-  }
-}
-
-public typealias  Array2<Element> = Adjoin<Array1<Element>, Array1<Element>>
-public typealias  Array3<Element> = Adjoin<Array2<Element>, Array1<Element>>
-public typealias  Array4<Element> = Adjoin<Array2<Element>, Array2<Element>>
-public typealias  Array5<Element> = Adjoin<Array4<Element>, Array1<Element>>
-public typealias  Array6<Element> = Adjoin<Array4<Element>, Array2<Element>>
-public typealias  Array7<Element> = Adjoin<Array4<Element>, Array3<Element>>
-public typealias  Array8<Element> = Adjoin<Array4<Element>, Array4<Element>>
-public typealias  Array9<Element> = Adjoin<Array8<Element>, Array1<Element>>
-public typealias Array10<Element> = Adjoin<Array8<Element>, Array2<Element>>
-public typealias Array11<Element> = Adjoin<Array8<Element>, Array3<Element>>
-public typealias Array12<Element> = Adjoin<Array8<Element>, Array4<Element>>
-public typealias Array13<Element> = Adjoin<Array8<Element>, Array5<Element>>
-public typealias Array14<Element> = Adjoin<Array8<Element>, Array6<Element>>
-public typealias Array15<Element> = Adjoin<Array8<Element>, Array7<Element>>
-public typealias Array16<Element> = Adjoin<Array8<Element>, Array8<Element>>
