@@ -193,11 +193,10 @@ extension StaticArray {
 extension StaticArray where Element: Equatable {
   @_transparent
   public static func ==(_ a: Self, _ b: Self) -> Bool {
-    var result = true
     for i in indices {
-      if a[i] != b[i] { result = false }
+      if a[i] != b[i] { return false }
     }
-    return result
+    return true
   }
 }
 
