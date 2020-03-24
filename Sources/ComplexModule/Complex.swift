@@ -33,17 +33,6 @@ import RealModule
 /// Riemann sphere for such values. This approach simplifies the number of
 /// edge cases that need to be considered for multiplication, division, and
 /// the elementary functions considerably.
-///
-/// `.magnitude` does not return the Euclidean norm; it uses the "infinity
-/// norm" (`max(|real|,|imaginary|)`) instead. There are two reasons for this
-/// choice: first, it's simply faster to compute on most hardware. Second,
-/// there exist values for which the Euclidean norm cannot be represented
-/// (consider a number with `.real` and `.imaginary` both equal to
-/// `RealType.greatestFiniteMagnitude`; the Euclidean norm would be
-/// `.sqrt(2) * .greatestFiniteMagnitude`, which overflows). Using
-/// the infinity norm avoids this problem entirely without significant
-/// downsides. You can access the Euclidean norm using the `length`
-/// property.
 @frozen
 public struct Complex<RealType> where RealType: Real {
   //  A note on the `x` and `y` properties
@@ -206,27 +195,6 @@ extension Complex {
     x == 0 && y == 0
   }
   
-  /// The ∞-norm of the value (`max(abs(real), abs(imaginary))`).
-  ///
-  /// If you need the Euclidean norm (a.k.a. 2-norm) use the `length` or `lengthSquared`
-  /// properties instead.
-  ///
-  /// Edge cases:
-  /// -
-  /// - If `z` is not finite, `z.magnitude` is `.infinity`.
-  /// - If `z` is zero, `z.magnitude` is `0`.
-  /// - Otherwise, `z.magnitude` is finite and non-zero.
-  ///
-  /// See also:
-  /// -
-  /// - `.length`
-  /// - `.lengthSquared`
-  @_transparent
-  public var magnitude: RealType {
-    guard isFinite else { return .infinity }
-    return max(abs(x), abs(y))
-  }
-  
   /// A "canonical" representation of the value.
   ///
   /// For normal complex numbers with a RealType conforming to
@@ -380,76 +348,6 @@ extension Complex: CustomDebugStringConvertible {
 
 // MARK: - Operations for working with polar form
 extension Complex {
-  
-  /// The Euclidean norm (a.k.a. 2-norm, `sqrt(real*real + imaginary*imaginary)`).
-  ///
-  /// This property takes care to avoid spurious over- or underflow in
-  /// this computation. For example:
-  ///
-  ///     let x: Float = 3.0e+20
-  ///     let x: Float = 4.0e+20
-  ///     let naive = sqrt(x*x + y*y) // +Inf
-  ///     let careful = Complex(x, y).length // 5.0e+20
-  ///
-  /// Note that it *is* still possible for this property to overflow,
-  /// because the length can be as much as sqrt(2) times larger than
-  /// either component, and thus may not be representable in the real type.
-  ///
-  /// For most use cases, you can use the cheaper `.magnitude`
-  /// property (which computes the ∞-norm) instead, which always produces
-  /// a representable result.
-  ///
-  /// Edge cases:
-  /// -
-  /// If a complex value is not finite, its `.length` is `infinity`.
-  ///
-  /// See also:
-  /// -
-  /// - `.magnitude`
-  /// - `.lengthSquared`
-  /// - `.phase`
-  /// - `.polar`
-  /// - `init(r:θ:)`
-  @_transparent
-  public var length: RealType {
-    let naive = lengthSquared
-    guard naive.isNormal else { return carefulLength }
-    return .sqrt(naive)
-  }
-  
-  //  Internal implementation detail of `length`, moving slow path off
-  //  of the inline function. Note that even `carefulLength` can overflow
-  //  for finite inputs, but only when the result is outside the range
-  //  of representable values.
-  @usableFromInline
-  internal var carefulLength: RealType {
-    guard isFinite else { return .infinity }
-    return .hypot(x, y)
-  }
-  
-  /// The squared length `(real*real + imaginary*imaginary)`.
-  ///
-  /// This property is more efficient to compute than `length`, but is
-  /// highly prone to overflow or underflow; for finite values that are
-  /// not well-scaled, `lengthSquared` is often either zero or
-  /// infinity, even when `length` is a finite number. Use this property
-  /// only when you are certain that this value is well-scaled.
-  ///
-  /// For many cases, `.magnitude` can be used instead, which is similarly
-  /// cheap to compute and always returns a representable value.
-  ///
-  /// See also:
-  /// -
-  /// - `.length`
-  /// - `.magnitude`
-  @_transparent
-  public var lengthSquared: RealType {
-    x*x + y*y
-  }
-  
-  @available(*, unavailable, renamed: "lengthSquared")
-  public var unsafeLengthSquared: RealType { lengthSquared }
-  
   /// The phase (angle, or "argument").
   ///
   /// Returns the angle (measured above the real axis) in radians. If
