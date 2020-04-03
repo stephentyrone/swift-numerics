@@ -13,26 +13,67 @@ import RealModule
 
 /// A complex number represented by real and imaginary parts.
 ///
-/// TODO: introductory text on complex numbers
+/// See [Complex Number](https://en.wikipedia.org/wiki/Complex_number).
 ///
-/// Implementation notes:
+/// Representation:
 /// -
-/// This type does not provide heterogeneous real/complex arithmetic,
-/// not even the natural vector-space operations like real * complex.
-/// There are two reasons for this choice: first, Swift broadly avoids
-/// mixed-type arithmetic when the operation can be adequately expressed
-/// by a conversion and homogeneous arithmetic. Second, with the current
-/// typechecker rules, it would lead to undesirable ambiguity in common
-/// expressions (see README.md for more details).
+/// A `Complex` value is stored as two `RealType` values, which represent
+/// the real and imaginary parts of the complex number. The memory layout
+/// of `Complex` is compatible with C `_Complex` types, and with C++
+/// `std::complex` types.
 ///
-/// Unlike C's `_Complex` and C++'s `std::complex<>` types, we do not
-/// attempt to make meaningful semantic distinctions between different
-/// representations of infinity or NaN. Any Complex value with at least
-/// one non-finite component is simply "non-finite". In as much as
-/// possible, we use the semantics of the point at infinity on the
-/// Riemann sphere for such values. This approach simplifies the number of
-/// edge cases that need to be considered for multiplication, division, and
-/// the elementary functions considerably.
+/// Zero and Infinity:
+/// -
+/// Unlike C and C++, `Complex` does not attempt to make a semantic
+/// distinction between different infinity and NaN values. Any `Complex`
+/// datum with a non-finite component is treated as the "point at infinity"
+/// on the Riemann sphere--a value with infinite magnitude and unspecified
+/// phase.
+///
+/// As a consequence, all values with either component infinite or NaN
+/// compare equal, and hash the same.
+///
+/// Similarly, all zero values compare equal and hash the same.
+///
+/// Mixed real/complex arithmetic:
+/// -
+/// Because the real numbers are a subset of the complex numbers, many
+/// languages support arithmetic with mixed real and complex operands.
+/// For example, C allows the following:
+/// ```c
+///
+/// #include <complex.h>
+/// double r = 1;
+/// double complex z = CMPLX(0, 2); // 2i
+/// double complex w = r + z;       // 1 + 2i
+/// ```
+///
+/// This type does not provide mixed operators.
+/// There are two reasons for this choice.
+/// First, Swift generally avoids mixed-type arithmetic when the operation can
+/// be adequately expressed with conversion.
+/// Second, under the existing typechecker behavior, mixed-type arithmetic
+/// would lead to highly undesirable behavior in common expressions (see
+/// Arithmetic.md for further details).
+///
+/// To write the example above in Swift, an explicit conversion is needed:
+/// ```swift
+/// import ComplexModule
+/// let r = 1.0
+/// let z = Complex<Double>(0, 2)
+/// let w = Complex(r) + z
+/// ```
+///
+/// There are a few "loopholes" that you can use, however.
+/// - Complex conforms to `Numeric`, and is therefore also
+///   `ExpressibleByIntegerLiteral`. Thus, integer literals can be used
+///   freely in expressions:
+///   ```
+///   let w = 1 + z
+///   ```
+/// -
+///
+///
 @frozen
 public struct Complex<RealType> where RealType: Real {
   //  A note on the `x` and `y` properties
@@ -346,78 +387,3 @@ extension Complex: CustomDebugStringConvertible {
   }
 }
 
-// MARK: - Operations for working with polar form
-extension Complex {
-  /// The phase (angle, or "argument").
-  ///
-  /// Returns the angle (measured above the real axis) in radians. If
-  /// the complex value is zero or infinity, the phase is not defined,
-  /// and `nan` is returned.
-  ///
-  /// Edge cases:
-  /// -
-  /// If the complex value is zero or non-finite, phase is `nan`.
-  ///
-  /// See also:
-  /// -
-  /// - `.length`
-  /// - `.polar`
-  /// - `init(r:θ:)`
-  @inlinable
-  public var phase: RealType {
-    guard isFinite && !isZero else { return .nan }
-    return .atan2(y: y, x: x)
-  }
-  
-  /// The length and phase (or polar coordinates) of this value.
-  ///
-  /// Edge cases:
-  /// -
-  /// If the complex value is zero or non-finite, phase is `.nan`.
-  /// If the complex value is non-finite, length is `.infinity`.
-  ///
-  /// See also:
-  /// -
-  /// - `.length`
-  /// - `.phase`
-  /// - `init(r:θ:)`
-  public var polar: (length: RealType, phase: RealType) {
-    (length, phase)
-  }
-  
-  /// Creates a complex value specified with polar coordinates.
-  ///
-  /// Edge cases:
-  /// -
-  /// - Negative lengths are interpreted as reflecting the point through the origin, i.e.:
-  ///   ```
-  ///   Complex(length: -r, phase: θ) == -Complex(length: r, phase: θ)
-  ///   ```
-  /// - For any `θ`, even `.infinity` or `.nan`:
-  ///   ```
-  ///   Complex(length: .zero, phase: θ) == .zero
-  ///   ```
-  /// - For any `θ`, even `.infinity` or `.nan`, if `r` is infinite then:
-  ///   ```
-  ///   Complex(length: r, phase: θ) == .infinity
-  ///   ```
-  /// - Otherwise, `θ` must be finite, or a precondition failure occurs.
-  ///
-  /// See also:
-  /// -
-  /// - `.length`
-  /// - `.phase`
-  /// - `.polar`
-  @inlinable
-  public init(length: RealType, phase: RealType) {
-    if phase.isFinite {
-      self = Complex(.cos(phase), .sin(phase)).multiplied(by: length)
-    } else {
-      precondition(
-        length.isZero || length.isInfinite,
-        "Either phase must be finite, or length must be zero or infinite."
-      )
-      self = Complex(length)
-    }
-  }
-}

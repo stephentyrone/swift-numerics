@@ -50,17 +50,10 @@ This decision might be revisited once users gain some experience working with th
 ### The magnitude property
 The `Numeric` protocol requires a `.magnitude` property, but (deliberately) does not fully specify the semantics.
 The most obvious choice for `Complex` would be to use the Euclidean norm (aka the "2-norm", given by `sqrt(real*real + imaginary*imaginary)`).
-However, in practice there are good reasons to use something else instead:
+However, in practice there are good reasons to use something else instead; we bind `.magnitude` to the infinity norm.
+For discussion of this choice, as well as background information on norms, consult [Norms.md](Norms.md).
 
-- The 2-norm requires special care to avoid spurious overflow/underflow, but the naive expressions for the 1-norm ("taxicab norm") or ∞-norm ("sup norm") are always correct.
-- Even when care is used, near the overflow boundary the 2-norm and the 1-norm are not representable.
-  As an example, consider `z = Complex(big, big)`, where `big` is `Double.greatestFiniteMagnitude`. The 1-norm and 2-norm of `z` both overflow (the 1-norm would be `2*big`, and the 2-norm would be `sqrt(2)*big`, neither of which are representable as `Double`), but the ∞-norm is always equal to either `real` or `imaginary`, so it is guaranteed to be representable.
-Because of this, the ∞-norm is the obvious alternative; it gives the nicest API surface.
-- If we consider the magnitude of more exotic types, like operators, the 1-norm and ∞-norm are significantly easier to compute than the 2-norm (O(n) vs. "no closed form expression, but O(n^3) iterative methods"), so it is nice to establish a precedent of `.magnitude` binding one of these cheaper-to-compute norms.
-- The ∞-norm is heavily used in other computational libraries; for example, it is used by the `izamax` and `icamax` functions in BLAS.
-
-The 2-norm still needs to be available, of course, because sometimes you need it.
-This functionality is accessed via the `.length` and `.unsafeLengthSquared` properties.
+The Euclidean norm is available as the `.length` property.
 
 ### Accuracy of division and multiplication
 This library attempts to provide robust division and multiplication operations, with small relative error in a complex norm. It is a non-goal to deliver small componentwise errors.

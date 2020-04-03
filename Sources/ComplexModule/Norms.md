@@ -115,12 +115,12 @@ For example:
   *‖z‖₁ ≤ 2 max(|x|,|y|)* // because *min(|x|,|y|) ≤ max(|x|,|y|)*  
   *‖z‖₁ ≤ 2 ‖z‖*
 
-So *c‖z‖ ≤ ‖z‖₁ ≤ 2‖z‖*, and the 1- and ∞-norms are equivalent.
+So *‖z‖ ≤ ‖z‖₁ ≤ 2‖z‖*, and the 1- and ∞-norms are equivalent.
 
 > Exercises:
 > 1. Prove that the ∞-norm is always less than or equal to the 2-norm.
 > 2. Prove that the 2-norm is always less than or equal to √2 times the ∞-norm.
-> 3. Prove that if norm equivalence is transitive.
+> 3. Prove that norm equivalence is transitive.
 
 ---
 ## Footnotes:
