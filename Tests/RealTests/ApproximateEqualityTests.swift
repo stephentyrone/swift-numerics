@@ -1,4 +1,16 @@
+//===--- ApproximateEqualityTests.swift -----------------------*- swift -*-===//
+//
+// This source file is part of the Swift Numerics open source project
+//
+// Copyright (c) 2020 Apple Inc. and the Swift Numerics project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+//
+//===----------------------------------------------------------------------===//
+
 import RealModule
+import Operators
 import XCTest
 
 final class ElementaryFunctionTests: XCTestCase {
@@ -8,13 +20,15 @@ final class ElementaryFunctionTests: XCTestCase {
     let gfm = T.greatestFiniteMagnitude
     let inf = T.infinity
     let nan = T.nan
-    XCTAssertTrue(zero.isApproximatelyEqual(to: zero, absoluteTolerance: tol))
-    XCTAssertTrue(zero.isApproximatelyEqual(to:-zero, absoluteTolerance: tol))
-    XCTAssertFalse(inf.isApproximatelyEqual(to: gfm, absoluteTolerance: tol))
-    XCTAssertFalse(gfm.isApproximatelyEqual(to: inf, absoluteTolerance: tol))
-    XCTAssertTrue(inf.isApproximatelyEqual(to: inf, absoluteTolerance: tol))
-    XCTAssertTrue(inf.isApproximatelyEqual(to: inf, absoluteTolerance: tol))
-    XCTAssertFalse(nan.isApproximatelyEqual(to: nan, absoluteTolerance: tol))
+    XCTAssert(zero ≈  zero ± tol)
+    XCTAssert(zero ≈ -zero ± tol)
+    XCTAssert(inf ≉ gfm ± tol)
+    XCTAssert(gfm ≉ inf ± tol)
+    XCTAssert(inf ≈ inf ± tol)
+    XCTAssert(-inf ≈ -inf ± tol)
+    XCTAssert(inf ≉ -inf ± tol)
+    XCTAssert(-inf ≉ inf ± tol)
+    XCTAssert(nan ≉ nan ± tol)
   }
   
   func testSpecials<T: Real>(relative tol: T) {
@@ -22,33 +36,38 @@ final class ElementaryFunctionTests: XCTestCase {
     let gfm = T.greatestFiniteMagnitude
     let inf = T.infinity
     let nan = T.nan
-    XCTAssertTrue(zero.isApproximatelyEqual(to: zero, relativeTolerance: tol))
-    XCTAssertTrue(zero.isApproximatelyEqual(to:-zero, relativeTolerance: tol))
-    XCTAssertFalse(inf.isApproximatelyEqual(to: gfm, relativeTolerance: tol))
-    XCTAssertFalse(gfm.isApproximatelyEqual(to: inf, relativeTolerance: tol))
-    XCTAssertTrue(inf.isApproximatelyEqual(to: inf, relativeTolerance: tol))
-    XCTAssertTrue(inf.isApproximatelyEqual(to: inf, relativeTolerance: tol))
-    XCTAssertFalse(nan.isApproximatelyEqual(to: nan, relativeTolerance: tol))
+    XCTAssert(zero ≈  zero ± tol%)
+    XCTAssert(zero ≈ -zero ± tol%)
+    XCTAssert(inf ≉ gfm ± tol%)
+    XCTAssert(gfm ≉ inf ± tol%)
+    XCTAssert(inf ≈ inf ± tol%)
+    XCTAssert(-inf ≈ -inf ± tol%)
+    XCTAssert(inf ≉ -inf ± tol%)
+    XCTAssert(-inf ≉ inf ± tol%)
+    XCTAssert(nan ≉ nan ± tol%)
   }
   
   func testSpecials<T: Real>(_ type: T.Type) {
-    XCTAssertTrue(T.zero.isApproximatelyEqual(to: .zero))
-    XCTAssertTrue(T.zero.isApproximatelyEqual(to:-.zero))
+    let zero = T.zero
+    XCTAssert( zero ≈  zero)
+    XCTAssert( zero ≈ -zero)
+    XCTAssert(-zero ≈  zero)
+    XCTAssert(-zero ≈ -zero)
     testSpecials(absolute: T.zero)
     testSpecials(absolute: T.leastNormalMagnitude)
     testSpecials(absolute: T.greatestFiniteMagnitude)
     testSpecials(relative: T.zero)
-    testSpecials(relative: T.ulpOfOne)
-    testSpecials(relative: T(1).nextDown)
-    testSpecials(relative: T(1))
+    testSpecials(relative: 100 * T.ulpOfOne)
+    testSpecials(relative: 1 as T)
+    testSpecials(relative: 100 as T)
   }
 
   func testDefaults<T: Real>(_ type: T.Type) {
     let e = T.ulpOfOne.squareRoot()
-    XCTAssertTrue(T(1).isApproximatelyEqual(to: 1 + e))
-    XCTAssertTrue(T(1).isApproximatelyEqual(to: 1 - e/2))
-    XCTAssertFalse(T(1).isApproximatelyEqual(to: 1 + 2*e))
-    XCTAssertFalse(T(1).isApproximatelyEqual(to: 1 - 3*e/2))
+    XCTAssert(1 ≈ 1 + e)
+    XCTAssert(1 ≈ 1 - e/2)
+    XCTAssert(1 ≉ 1 + 2*e)
+    XCTAssert(1 ≉ 1 - 3*e/2)
   }
   
   func testRandom<T>(_ type: T.Type) where T: FixedWidthFloatingPoint & Real {
@@ -62,49 +81,41 @@ final class ElementaryFunctionTests: XCTestCase {
     x.sort()
     // We have 66 values in 1 ... 2, so if we use a tolerance of around 1/64,
     // at least some of the pairs will compare equal with tolerance.
-    let tol = T.random(in: 1/64 ... 1/32, using: &g)
+    let abs = T.random(in: 1/64 ... 1/32, using: &g)
+    let rel = (100*abs)%
     // We're going to walk the values in order, validating that some common-
     // sense properties hold.
     for i in x.indices {
       // reflexivity
-      XCTAssertTrue(x[i].isApproximatelyEqual(to: x[i]))
-      XCTAssertTrue(x[i].isApproximatelyEqual(to: x[i], relativeTolerance: tol))
-      XCTAssertTrue(x[i].isApproximatelyEqual(to: x[i], absoluteTolerance: tol))
+      XCTAssert(x[i] ≈ x[i])
+      XCTAssert(x[i] ≈ x[i] ± abs)
+      XCTAssert(x[i] ≈ x[i] ± rel)
       for j in i ..< x.endIndex {
         // commutativity
-        XCTAssertTrue(
-          x[i].isApproximatelyEqual(to: x[j], relativeTolerance: tol) ==
-          x[j].isApproximatelyEqual(to: x[i], relativeTolerance: tol)
-        )
-        XCTAssertTrue(
-          x[i].isApproximatelyEqual(to: x[j], absoluteTolerance: tol) ==
-          x[j].isApproximatelyEqual(to: x[i], absoluteTolerance: tol)
-        )
+        XCTAssert((x[i] ≈ x[j] ± abs) == (x[j] ≈ x[i] ± abs))
+        XCTAssert((x[i] ≈ x[j] ± rel) == (x[j] ≈ x[i] ± rel))
         // scale invariance for relative comparisons
         let scale = T(
           sign:.plus,
           exponent: T.Exponent.random(in: T.leastNormalMagnitude.exponent ..< T.greatestFiniteMagnitude.exponent),
           significand: 1
         )
-        XCTAssertTrue(
-          x[i].isApproximatelyEqual(to: x[j], relativeTolerance: tol) ==
-          (scale*x[i]).isApproximatelyEqual(to: scale*x[j], relativeTolerance: tol)
-        )
+        XCTAssert((x[i] ≈ x[j] ± rel) == (scale*x[i] ≈ scale*x[j] ± rel))
       }
       // if a ≤ b ≤ c, and a ≈ c, then a ≈ b and b ≈ c (relative tolerance)
-      var left = x.firstIndex { x[i].isApproximatelyEqual(to: $0, relativeTolerance: tol) }
-      var right = x.lastIndex { x[i].isApproximatelyEqual(to: $0, relativeTolerance: tol) }
+      var left = x.firstIndex { x[i] ≈ $0 ± rel }
+      var right = x.lastIndex { x[i] ≈ $0 ± rel }
       if let l = left, let r = right {
         for j in l ..< r {
-          XCTAssertTrue(x[i].isApproximatelyEqual(to: x[j], relativeTolerance: tol))
+          XCTAssert(x[i] ≈ x[j] ± rel)
         }
       }
       // if a ≤ b ≤ c, and a ≈ c, then a ≈ b and b ≈ c (absolute tolerance)
-      left = x.firstIndex { x[i].isApproximatelyEqual(to: $0, absoluteTolerance: tol) }
-      right = x.lastIndex { x[i].isApproximatelyEqual(to: $0, absoluteTolerance: tol) }
+      left = x.firstIndex { x[i] ≈ $0 ± abs }
+      right = x.lastIndex { x[i] ≈ $0 ± abs }
       if let l = left, let r = right {
         for j in l ..< r {
-          XCTAssertTrue(x[i].isApproximatelyEqual(to: x[j], absoluteTolerance: tol))
+          XCTAssert(x[i] ≈ x[j] ± abs)
         }
       }
     }
