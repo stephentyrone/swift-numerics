@@ -27,7 +27,6 @@ let package = Package(
     .target(name: "RealModule", dependencies: ["_NumericsShims"]),
     
     .testTarget(name: "ComplexTests", dependencies: ["Numerics", "Operators"]),
-    .testTarget(name: "OperatorTests", dependencies: ["Numerics", "Operators"]),
     .testTarget(name: "RealTests", dependencies: ["RealModule", "Operators"]),
   ]
 )

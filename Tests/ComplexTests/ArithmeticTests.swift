@@ -10,30 +10,19 @@
 //===----------------------------------------------------------------------===//
 
 import XCTest
-import ComplexModule
-import RealModule
-
-// TODO: improve this to be a general-purpose complex comparison with tolerance
-func relativeError<T>(_ a: Complex<T>, _ b: Complex<T>) -> T {
-  if a == b { return 0 }
-  let scale = max(a.magnitude, b.magnitude, T.leastNormalMagnitude).ulp
-  return (a - b).magnitude / scale
-}
-
-func closeEnough<T: Real>(_ a: T, _ b: T, ulps allowed: T) -> Bool {
-  let scale = max(a.magnitude, b.magnitude, T.leastNormalMagnitude).ulp
-  return (a - b).magnitude <= allowed * scale
-}
+import Numerics
+import Operators
 
 func checkMultiply<T>(
   _ a: Complex<T>, _ b: Complex<T>, expected: Complex<T>, ulps allowed: T
 ) -> Bool {
   let observed = a*b
-  let rel = relativeError(observed, expected)
-  if rel > allowed {
+  if expected == observed { return false }
+  let ulp = expected.magnitude.ulp
+  guard observed ≈ expected ± allowed*ulp else {
     print("Over-large error in \(a)*\(b)")
     print("Expected: \(expected)\nObserved: \(observed)")
-    print("Relative error was \(rel) (tolerance: \(allowed).")
+    print("Ulp error: \((observed - expected).magnitude/ulp) (tolerance: \(allowed)).")
     return true
   }
   return false
@@ -43,11 +32,12 @@ func checkDivide<T>(
   _ a: Complex<T>, _ b: Complex<T>, expected: Complex<T>, ulps allowed: T
 ) -> Bool {
   let observed = a/b
-  let rel = relativeError(observed, expected)
-  if rel > allowed {
+  if expected == observed { return false }
+  let ulp = expected.magnitude.ulp
+  guard observed ≈ expected ± allowed*ulp else {
     print("Over-large error in \(a)/\(b)")
     print("Expected: \(expected)\nObserved: \(observed)")
-    print("Relative error was \(rel) (tolerance: \(allowed).")
+    print("Ulp error: \((observed - expected).magnitude/ulp) (tolerance: \(allowed)).")
     return true
   }
   return false
@@ -80,6 +70,7 @@ final class ArithmeticTests: XCTestCase {
     let exponentRange =
       (T.leastNormalMagnitude.exponent + T.Exponent(T.significandBitCount)) ...
         T.greatestFiniteMagnitude.exponent
+    
     let inputs = (0..<100).map { _ in
       Polar(length: T(
         sign: .plus,
@@ -87,6 +78,11 @@ final class ArithmeticTests: XCTestCase {
         significand: T.random(in: 1 ..< 2)
       ), phase: T.random(in: -.pi ... .pi))
     }
+    
+    // a tolerance of about 16 ulps, to paper over platform math library
+    // variations.
+    let rtol = (1600 * T.ulpOfOne)%
+    
     for p in inputs {
       // first test that each value can round-trip between rectangular and
       // polar coordinates with reasonable accuracy. We'll probably need to
@@ -96,50 +92,59 @@ final class ArithmeticTests: XCTestCase {
       // bounds on every platform's libm, we can't get tight bounds on the
       // accuracy of these operations, so we need to relax them gradually).
       let z = Complex(length: p.length, phase: p.phase)
-      if !closeEnough(z.length, p.length, ulps: 16) {
+      guard z.length ≈ p.length ± rtol else {
         print("p = \(p)\nz = \(z)\nz.length = \(z.length)")
-        XCTFail()
+        return XCTFail()
       }
-      if !closeEnough(z.phase, p.phase, ulps: 16) {
+      guard z.phase ≈ p.phase ± rtol else {
         print("p = \(p)\nz = \(z)\nz.phase = \(z.phase)")
-        XCTFail()
+        return XCTFail()
       }
       // Complex(length: -r, phase: θ) = -Complex(length: r, phase: θ).
       let w = Complex(length: -p.length, phase: p.phase)
-      if w != -z {
+      guard w == -z else {
         print("p = \(p)\nw = \(w)\nz = \(z)")
-        XCTFail()
+        return XCTFail()
       }
-      XCTAssertEqual(w, -z)
       // if length*length is normal, it should be lengthSquared, up
       // to small error.
       if (p.length*p.length).isNormal {
-        if !closeEnough(z.lengthSquared, p.length*p.length, ulps: 16) {
+        guard z.lengthSquared ≈ p.length*p.length ± rtol else {
           print("p = \(p)\nz = \(z)\nz.lengthSquared = \(z.lengthSquared)")
-          XCTFail()
+          return XCTFail()
         }
       }
       // Test reciprocal and normalized:
       let r = Complex(length: 1/p.length, phase: -p.phase)
       if r.isNormal {
-        if relativeError(r, z.reciprocal!) > 16 {
+        guard r ≈ z.reciprocal! ± rtol else {
           print("p = \(p)\nz = \(z)\nz.reciprocal = \(r)")
-          XCTFail()
+          return XCTFail()
         }
       } else { XCTAssertNil(z.reciprocal) }
       let n = Complex(length: 1, phase: p.phase)
-      if relativeError(n, z.normalized!) > 16 {
+      guard n ≈ z.normalized! ± rtol else {
         print("p = \(p)\nz = \(z)\nz.normalized = \(n)")
-        XCTFail()
+        return XCTFail()
       }
       
       // Now test multiplication and division using the polar inputs:
       for q in inputs {
         let w = Complex(length: q.length, phase: q.phase)
-        let product = Complex(length: p.length * q.length, phase: p.phase + q.phase)
-        if checkMultiply(z, w, expected: product, ulps: 16) { XCTFail() }
-        let quotient = Complex(length: p.length / q.length, phase: p.phase - q.phase)
-        if checkDivide(z, w, expected: quotient, ulps: 16) { XCTFail() }
+        let product = Complex(
+          length: p.length * q.length,
+          phase: p.phase + q.phase
+        )
+        if product.isFinite {
+          if checkMultiply(z, w, expected: product, ulps: 16) { XCTFail() }
+        }
+        let quotient = Complex(
+          length: p.length / q.length,
+          phase: p.phase - q.phase
+        )
+        if quotient.isFinite {
+          if checkDivide(z, w, expected: quotient, ulps: 16) { XCTFail() }
+        }
       }
     }
   }
