@@ -95,4 +95,17 @@ extension SplitComplexArray where RealType == Float {
     }
   }
 }
+
+extension SplitComplexArray where RealType == Double {
+  public mutating func withUnsafeDSPDoubleSplitComplex<R>(
+    _ body: (_ split: DSPDoubleSplitComplex, _ n: Int) throws -> R
+  ) rethrows -> R {
+    try withUnsafeMutableBufferPointers { (r,i) in
+      try body(
+        DSPDoubleSplitComplex(realp: r.baseAddress!, imagp: i.baseAddress!),
+        r.count
+      )
+    }
+  }
+}
 #endif
