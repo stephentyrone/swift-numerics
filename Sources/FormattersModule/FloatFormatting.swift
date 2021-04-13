@@ -136,8 +136,10 @@ extension FloatFormatting {
     //   fprintf formatters promote Float to Double
     case is Float.Type: return ""
     case is Double.Type: return ""
+#if (arch(i386) || arch(x86_64)) && !os(Windows) && !os(Android)
     //   fprintf formatters use L for Float80
     case is Float80.Type: return "L"
+#endif
     default: return nil
     }
   }
