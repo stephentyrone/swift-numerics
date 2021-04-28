@@ -11,15 +11,15 @@
 
 import _NumericsShims
 
-public struct UInt128 {
+public struct UInt256 {
 #if arch(arm) || arch(i386)
-  var _words: Wordx4
+  var _words: Wordx8
 #else
-  var _words: Wordx2
+  var _words: Wordx4
 #endif
 }
 
-extension UInt128: Hashable {
+extension UInt256: Hashable {
   public static func ==(a: Self, b: Self) -> Bool {
     zip(a._words, b._words).allSatisfy(==)
   }
@@ -31,8 +31,8 @@ extension UInt128: Hashable {
   }
 }
 
-extension UInt128: AdditiveArithmetic {
-  public static var zero: UInt128 {
+extension UInt256: AdditiveArithmetic {
+  public static var zero: UInt256 {
     Self(_words: .init())
   }
   
