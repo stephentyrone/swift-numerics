@@ -16,19 +16,19 @@ let package = Package(
   
   name: "swift-numerics",
   products: [
-    .library(name: "ComplexModule", targets: ["ComplexModule"]),
     .library(name: "Numerics", targets: ["Numerics"]),
-    .library(name: "RealModule", targets: ["RealModule"]),
   ],
   
   targets: [
     // User-facing modules
     .target(name: "ComplexModule", dependencies: ["RealModule"]),
-    .target(name: "Numerics", dependencies: ["ComplexModule", "RealModule"]),
+    .target(name: "IntegerModule", dependencies: ["_NumericsShims", "_StaticBuffer"]),
+    .target(name: "Numerics", dependencies: ["ComplexModule", "RealModule", "IntegerModule"]),
     .target(name: "RealModule", dependencies: ["_NumericsShims"]),
     
     // Implementation details
-    .target(name: "_NumericsShims", dependencies: []),
+    .target(name: "_NumericsShims"),
+    .target(name: "_StaticBuffer"),
     .target(name: "_TestSupport", dependencies: ["Numerics"]),
     
     // Unit test bundles

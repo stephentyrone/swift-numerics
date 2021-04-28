@@ -8,7 +8,9 @@ See https://swift.org/LICENSE.txt for license information
 #]]
 
 add_subdirectory(_NumericsShims)
+add_subdirectory(_Staticbuffer)
 add_subdirectory(ComplexModule)
+add_subdirectory(IntegerModule)
 add_subdirectory(Numerics)
 add_subdirectory(RealModule)
 if(BUILD_TESTING)

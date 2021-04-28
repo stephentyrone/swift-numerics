@@ -397,3 +397,52 @@ HEADER_SHIM double _numerics_muladd(double a, double b, double c) {
 
 // No long-double muladd operation, because no one has built an FMA for it
 // (except for Itanium, which Swift doesn't support).
+
+// MARK: - integer arithmetic support
+#if defined __LP64__ || defined __ARM64_ARCH_8_32__
+# define Word64 1
+#endif
+
+#include <stdint.h>
+#if Word64
+typedef uint64_t Word;
+#else
+typedef uint32_t Word;
+#endif
+
+typedef struct { Word _storage[2]; } Wordx2;
+
+typedef struct { Word _storage[4]; } Wordx4;
+
+typedef struct { Word _storage[8]; } Wordx8;
+
+/// Add with carry ("full add")
+///
+/// Result is a &+ b &+ carry, carry is updated with the carry-out.
+HEADER_SHIM Word _numerics_adc(Word a, Word b, _Bool *carry) {
+  Word c = *carry;
+#if Word64
+  Word result = __builtin_addcll(a, b, c, &c);
+#else
+  Word result = __builtin_addc(a, b, c, &c);
+#endif
+  *carry = c;
+  return result;
+}
+
+/// Subtract with carry ("full subtract")
+///
+/// Result is a &- b &- borrow, borrow is updated with the borrow-out.
+HEADER_SHIM Word _numerics_sbb(Word a, Word b, _Bool *borrow) {
+  Word c = *borrow;
+  // Note: "__builtin_subc" suggests a subtract-with-carry (i.e.
+  // a + ~b + carry), but the actual operation implemented by clang
+  // is subtract-with-borrow (i.e. a - b - borrow).
+#if Word64
+  Word result = __builtin_subcll(a, b, c, &c);
+#else
+  Word result = __builtin_subc(a, b, c, &c);
+#endif
+  *borrow = c;
+  return result;
+}
