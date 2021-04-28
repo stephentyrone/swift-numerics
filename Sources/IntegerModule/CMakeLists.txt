@@ -9,7 +9,8 @@ See https://swift.org/LICENSE.txt for license information
 
 add_library(IntegerModule
   ArithmeticCore.swift
-  UInt128.swift)
+  UInt128.swift
+  UInt256.swift)
 set_target_properties(IntegerModule PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_Swift_MODULE_DIRECTORY})
 target_link_libraries(RealModule PUBLIC
