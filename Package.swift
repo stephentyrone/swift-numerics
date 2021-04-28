@@ -34,6 +34,7 @@ let package = Package(
     // Unit test bundles
     .testTarget(name: "ComplexTests", dependencies: ["_TestSupport"]),
     .testTarget(name: "RealTests", dependencies: ["_TestSupport"]),
+    .testTarget(name: "IntegerTests", dependencies: ["IntegerModule"]),
     
     // Test executables
     .target(name: "ComplexLog", dependencies: ["Numerics", "_TestSupport"], path: "Tests/Executable/ComplexLog"),
