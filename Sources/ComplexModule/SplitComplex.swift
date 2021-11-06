@@ -38,6 +38,21 @@ extension SplitComplexArray {
   }
   
   @usableFromInline
+  internal static func niceCapacity(minimum capacity: Int) -> Int {
+    // If the capacity is large enough that we're consuming at least a couple
+    // cachelines, pad it out to a multiple of 64 bytes (which may not actually
+    // be a cacheline--some architectures have 128 or even 256B lines--but is a
+    // reasonable bound to benefit vectorization, and will line up with
+    // cachelines pretty often).
+    let elementSize = MemoryLayout<RealType>.size
+    if capacity * elementSize >= 128 {
+      return (capacity + elementSize &- 1) & -elementSize
+    }
+    // For smaller capacities, don't bother padding to save memory where we can.
+    return capacity
+  }
+  
+  @usableFromInline
   internal mutating func ensureUnique(
     minimumCapacity: Int = 0
   ) {
@@ -48,22 +63,12 @@ extension SplitComplexArray {
     // requested capacity is _smaller_ than what we have, simply use that.
     // TODO: allow customizing growth factor.
     let scale = minimumCapacity > capacity ? 2 : 1
-    capacity = Swift.max(scale*count, minimumCapacity)
-    // Allocate buffer with new capacity.
-    let owner = UnsafeBufferOwner<RealType>(uninitializedCapacity: 2*capacity)
-    // copy x and y data before we update the layout information of self,
-    // because we need to have the old layout information to find the
-    // memory to copy from. Old x and y allocations are not necessarily
-    // contiguous, so we need to copy them separately.
-    let newx = owner.buffer.baseAddress!
-    let newy = newx.advanced(by: capacity)
-    newx.initialize(from: x, count: count)
-    newy.initialize(from: y, count: count)
-    // Data has been copied, so we can update layout info (count does not
-    // change).
-    self.x = newx
-    self.y = newy
-    self.owner = owner
+    let newCapacity = Swift.max(scale*count, minimumCapacity)
+    self = .init(unsafeUninitializedCapacity: newCapacity) { newx, newy in
+      newx.initialize(from: x, count: count)
+      newy.initialize(from: y, count: count)
+      return count
+    }
   }
 }
 
@@ -89,9 +94,9 @@ extension SplitComplexArray {
   public init(
     withExistingStorage storage: (real: UnsafeMutablePointer<RealType>,
                                   imaginary: UnsafeMutablePointer<RealType>),
+    ownedBy owner: AnyObject? = nil,
     count: Int,
-    capacity: Int = 0,
-    ownedBy owner: AnyObject? = nil
+    capacity: Int = 0
   ) {
     precondition(count > 0)
     precondition(capacity == 0 || capacity > count)
@@ -109,10 +114,10 @@ extension SplitComplexArray {
                                    UnsafeMutablePointer<RealType>) -> Int
   ) {
     precondition(capacity >= 0)
-    let owner = UnsafeBufferOwner<RealType>(uninitializedCapacity: 2*capacity)
-    self.capacity = capacity
+    self.capacity = Self.niceCapacity(minimum: capacity)
+    let owner = UnsafeBufferOwner<RealType>(uninitializedCapacity: 2*self.capacity)
     self.x = owner.buffer.baseAddress!
-    self.y = self.x.advanced(by: capacity)
+    self.y = self.x.advanced(by: self.capacity)
     self.owner = owner
     self.count = initializer(self.x, self.y)
   }
