@@ -26,10 +26,43 @@ final class SplitComplexTests: XCTestCase {
     testRepeatingInit(Float.self)
   }
   
+  func testAppend() {
+    var a = SplitComplexArray(repeating: Complex<Float>.i, count: 1)
+    a.append(Complex(1,1))
+    a.append(Complex(2,2))
+    a.append(Complex(3,3))
+    a.append(Complex(4,4))
+    XCTAssertEqual(a[1], Complex(1,1))
+    XCTAssertEqual(a[2], Complex(2,2))
+    XCTAssertEqual(a[3], Complex(3,3))
+    XCTAssertEqual(a[4], Complex(4,4))
+  }
+  
   func testInterleaveFloat( ) {
     let a = SplitComplexArray(repeating: Complex<Float>.i, count: 1024)
     measure {
-      let _ = a.interleave()
+      let _ = Array(a)
+    }
+  }
+  
+  func testInterleaveDouble( ) {
+    let a = SplitComplexArray(repeating: Complex<Double>.i, count: 1024)
+    measure {
+      let _ = Array(a)
+    }
+  }
+  
+  func testDeinterleaveFloat( ) {
+    let a = Array(repeating: Complex<Float>.i, count: 1024)
+    measure {
+      let _ = SplitComplexArray(a)
+    }
+  }
+  
+  func testDeinterleaveDouble( ) {
+    let a = Array(repeating: Complex<Double>.i, count: 1024)
+    measure {
+      let _ = SplitComplexArray(a)
     }
   }
 }

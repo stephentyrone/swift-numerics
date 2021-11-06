@@ -11,7 +11,9 @@ add_library(ComplexModule
   Arithmetic.swift
   Complex.swift
   Differentiable.swift
-  ElementaryFunctions.swift)
+  ElementaryFunctions.swift
+  SplitComplex.swift
+  splitComplex+Collection.swift)
 set_target_properties(ComplexModule PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_Swift_MODULE_DIRECTORY})
 target_link_libraries(ComplexModule PUBLIC
