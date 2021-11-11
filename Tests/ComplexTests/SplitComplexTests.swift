@@ -15,7 +15,7 @@ import RealModule
 
 final class SplitComplexTests: XCTestCase {
   func testRepeatingInit<T: Real>(_ type: T.Type) {
-    var a = SplitComplexArray(repeating: Complex<T>.i, count: 8)
+    var a = SplitComplexVector(repeating: Complex<T>.i, count: 8)
     for i in a.indices {
       a[i] *= Complex(i)
     }
@@ -27,7 +27,7 @@ final class SplitComplexTests: XCTestCase {
   }
   
   func testAppend() {
-    var a = SplitComplexArray(repeating: Complex<Float>.i, count: 1)
+    var a = SplitComplexVector(repeating: Complex<Float>.i, count: 1)
     a.append(Complex(1,1))
     a.append(Complex(2,2))
     a.append(Complex(3,3))
@@ -39,14 +39,14 @@ final class SplitComplexTests: XCTestCase {
   }
   
   func testInterleaveFloat( ) {
-    let a = SplitComplexArray(repeating: Complex<Float>.i, count: 1024)
+    let a = SplitComplexVector(repeating: Complex<Float>.i, count: 1024)
     measure {
       let _ = Array(a)
     }
   }
   
   func testInterleaveDouble( ) {
-    let a = SplitComplexArray(repeating: Complex<Double>.i, count: 1024)
+    let a = SplitComplexVector(repeating: Complex<Double>.i, count: 1024)
     measure {
       let _ = Array(a)
     }
@@ -55,14 +55,14 @@ final class SplitComplexTests: XCTestCase {
   func testDeinterleaveFloat( ) {
     let a = Array(repeating: Complex<Float>.i, count: 1024)
     measure {
-      let _ = SplitComplexArray(a)
+      let _ = SplitComplexVector(a)
     }
   }
   
   func testDeinterleaveDouble( ) {
     let a = Array(repeating: Complex<Double>.i, count: 1024)
     measure {
-      let _ = SplitComplexArray(a)
+      let _ = SplitComplexVector(a)
     }
   }
 }

@@ -11,24 +11,124 @@
 
 import RealModule
 
-public struct SplitComplexArray<RealType: Real> {
+public struct SplitComplexVector<RealType: Real> {
   @usableFromInline
   internal var x: UnsafeMutablePointer<RealType>
   
   @usableFromInline
   internal var y: UnsafeMutablePointer<RealType>
   
-  public var count: Int
+  public var count: Int {
+    @_transparent didSet { owner.updateCount?(count) }
+  }
   
   // The capacity of the underlying storage; zero if unknown.
   @usableFromInline
   internal var capacity: Int
   
-  internal var owner: AnyObject?
+  @usableFromInline
+  internal var owner: (
+    // The object that has ownership of the storage that x and y point
+    // into, if the storage is owned (x and y may point into two separate
+    // allocations, but they must be owned by a single object).
+    object: AnyObject?,
+    // If non-nil, this is called whenever count is updated, so that the
+    // code responsible for deinitializing x and y knows how many elements
+    // of each must be cleaned up. If RealType is trivial, this is not
+    // necessary.
+    updateCount: ((Int) -> Void)?
+  )
 }
 
-extension SplitComplexArray {
-  /// A SplitComplexArray containing `count` copies of `value`.
+// MARK: - Low-level initializers
+extension SplitComplexVector {
+  
+  /// Allocates a new SplitComplexVector with specified capacity, then
+  /// calls the provided initializer.
+  ///
+  /// Note that unlike the Array method with the same name, the initializer
+  /// returns the final count instead of taking it `inout`.
+  @usableFromInline @inline(__always)
+  internal init(
+    unsafeUninitializedCapacity capacity: Int,
+    initializingWith initializer: (_ x: UnsafeMutablePointer<RealType>,
+                                   _ y: UnsafeMutablePointer<RealType>) -> Int
+  ) {
+    precondition(capacity >= 0)
+    // If the capacity is large enough that we're consuming at least a
+    // couple cachelines, pad it out to a multiple of 64 bytes (64 is not
+    // necessarily the size of a cachline, but lines up pretty often and
+    // still benefits us even when it isn't).
+    if capacity * MemoryLayout<RealType>.size > 128 {
+      self.capacity = (capacity + 63) & -64
+    } else {
+      self.capacity = capacity
+    }
+    // Allocate a new SplitComplexBuffer with the desired capacity and
+    // call the provided initializer (which returns the count).
+    let owner = SplitComplexBuffer<RealType>(uninitializedCapacity: self.capacity)
+    self.x = owner.buffer.baseAddress!
+    self.y = self.x.advanced(by: self.capacity)
+    self.count = initializer(self.x, self.y)
+    // Set owner, and register the buffer to recieve updates to count if
+    // RealType is non-trivial.
+    self.owner.object = owner
+    if !_isPOD(RealType.self) {
+      self.owner.updateCount = { newCount in owner.count = newCount }
+      // didSet is not called in initializers, so we need to update the
+      // count now, as well:
+      owner.count = self.count
+    }
+  }
+  
+  /// Wraps existing real and imaginary memory regions in a SplitComplexVector.
+  ///
+  /// - Parameters:
+  ///   - storage: A pair of pointers to the real and imaginary components of
+  ///     the array, each containing `count` `RealType` elements stored
+  ///     contiguously in memory.
+  ///
+  ///   - count: The number of initialized complex values in the
+  ///     SplitComplexVector.
+  ///
+  ///   - capacity: The capacity of the buffers. If the storage does not
+  ///     permit growth, set the capacity to zero or omit this parameter.
+  ///
+  ///   - owner: The object with ownership of the storage that the pointers
+  ///     reference, and a callback to use if the count of initialized
+  ///     elements in the SplitComplexVector is updated.
+  ///
+  ///     The SplitComplexVector will maintain a reference to the owning
+  ///     object. If there is no owning object because the memory is
+  ///     manually managed or the storage is immortal, omit this parameter.
+  ///
+  ///     If `RealType` is trivial, there is no need to provide a callback
+  ///     for tracking count, because no deinitialization is required.
+  ///
+  /// - Returns: a `SplitComplexVector` backed by the supplied `storage`, and
+  ///   holding a reference to `owner`.
+  public init(
+    withExistingStorage storage: (
+      real: UnsafeMutablePointer<RealType>,
+      imaginary: UnsafeMutablePointer<RealType>
+    ),
+    ownedBy owner: (
+      object: AnyObject?,
+      updateCount: ((Int) -> Void)?
+    ) = (nil, nil),
+    count: Int,
+    capacity: Int = 0
+  ) {
+    precondition(count > 0)
+    precondition(capacity == 0 || capacity > count)
+    self.capacity = capacity
+    self.x = storage.real
+    self.y = storage.imaginary
+    self.owner = owner
+    self.count = count
+  }
+  
+  /// A SplitComplexVector containing `count` copies of `value`.
   public init(repeating value: Complex<RealType>, count: Int) {
     self.init(unsafeUninitializedCapacity: count) { x, y in
       x.initialize(repeating: value.x, count: count)
@@ -37,26 +137,18 @@ extension SplitComplexArray {
     }
   }
   
-  @usableFromInline
-  internal static func niceCapacity(minimum capacity: Int) -> Int {
-    // If the capacity is large enough that we're consuming at least a couple
-    // cachelines, pad it out to a multiple of 64 bytes (which may not actually
-    // be a cacheline--some architectures have 128 or even 256B lines--but is a
-    // reasonable bound to benefit vectorization, and will line up with
-    // cachelines pretty often).
-    let elementSize = MemoryLayout<RealType>.size
-    if capacity * elementSize >= 128 {
-      return (capacity + elementSize &- 1) & -elementSize
-    }
-    // For smaller capacities, don't bother padding to save memory where we can.
-    return capacity
+  /// An empty SplitComplexVector with space reserved for `capacity` values.
+  public init(capacity: Int) {
+    self.init(unsafeUninitializedCapacity: capacity) { x, y in 0 }
   }
-  
+}
+
+extension SplitComplexVector {
   @usableFromInline
   internal mutating func ensureUnique(
     minimumCapacity: Int = 0
   ) {
-    if isKnownUniquelyReferenced(&owner) && capacity >= minimumCapacity {
+    if isKnownUniquelyReferenced(&owner.object) && capacity >= minimumCapacity {
       return
     }
     // Only try to grow geometrically if we're growing at all. If the
@@ -70,78 +162,28 @@ extension SplitComplexArray {
       return count
     }
   }
-}
-
-// MARK: - Raw pointer operations
-extension SplitComplexArray {
-  // TODO: should we have an init that takes UMBP as well as / instead of this?
-  /// Wraps existing real and imaginary memory regions in a SplitComplexArray.
-  ///
-  /// - Parameters:
-  ///   - storage: A pair of pointers to the real and imaginary components of
-  ///     the array, each containing `count` `RealType` elements stored
-  ///     contiguously in memory.
-  ///   - count: The number of complex values in the SplitComplexArray.
-  ///   - capacity: The capacity of the buffers. If the storage does not
-  ///     permit growth, set the capacity to zero or omit this parameter.
-  ///   - owner: The object with ownership of the storage that the pointers
-  ///     reference. The SplitComplexArray will maintain a reference to this
-  ///     object. If there is no owning object because the memory is manually
-  ///     managed or the storage is immortal, omit this parameter.
-  ///
-  /// - Returns: a `SplitComplexArray` backed by the supplied `storage`, and
-  ///   holding a reference to `owner`.
-  public init(
-    withExistingStorage storage: (real: UnsafeMutablePointer<RealType>,
-                                  imaginary: UnsafeMutablePointer<RealType>),
-    ownedBy owner: AnyObject? = nil,
-    count: Int,
-    capacity: Int = 0
-  ) {
-    precondition(count > 0)
-    precondition(capacity == 0 || capacity > count)
-    self.count = count
-    self.capacity = capacity
-    self.x = storage.real
-    self.y = storage.imaginary
-    self.owner = owner
-  }
   
-  @usableFromInline @inline(__always)
-  internal init(
-    unsafeUninitializedCapacity capacity: Int,
-    initializingWith initializer: (UnsafeMutablePointer<RealType>,
-                                   UnsafeMutablePointer<RealType>) -> Int
-  ) {
-    precondition(capacity >= 0)
-    self.capacity = Self.niceCapacity(minimum: capacity)
-    let owner = UnsafeBufferOwner<RealType>(uninitializedCapacity: 2*self.capacity)
-    self.x = owner.buffer.baseAddress!
-    self.y = self.x.advanced(by: self.capacity)
-    self.owner = owner
-    self.count = initializer(self.x, self.y)
+  public mutating func reserveCapacity(_ newCapacity: Int) {
+    if newCapacity > capacity {
+      self = .init(unsafeUninitializedCapacity: newCapacity) { newx, newy in
+        newx.initialize(from: x, count: count)
+        newy.initialize(from: y, count: count)
+        return count
+      }
+    }
   }
 }
 
 // MARK: - Formatting
-extension SplitComplexArray: CustomStringConvertible {
+extension SplitComplexVector: CustomStringConvertible {
   public var description: String {
     return "[" + map(\.description).joined(separator: ", ") + "]"
   }
 }
 
-// MARK: - Guts
-/// A minimal "managed buffer" that doesn't do anything fancy.
-@usableFromInline
-internal final class UnsafeBufferOwner<Element> {
-  
-  var buffer: UnsafeMutableBufferPointer<Element>
-  
-  init(uninitializedCapacity: Int) {
-    buffer = UnsafeMutableBufferPointer<Element>.allocate(
-      capacity: uninitializedCapacity
-    )
+extension SplitComplexVector: ExpressibleByArrayLiteral {
+  public init(arrayLiteral elements: Complex<RealType>...) {
+    self.init(capacity: elements.count)
+    self.append(contentsOf: elements)
   }
-  
-  deinit { buffer.deallocate() }
 }

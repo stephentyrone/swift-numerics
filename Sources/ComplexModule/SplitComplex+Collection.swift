@@ -12,7 +12,7 @@
 import RealModule
 
 // MARK: - Collection conformances
-extension SplitComplexArray: RandomAccessCollection, MutableCollection {
+extension SplitComplexVector: RandomAccessCollection, MutableCollection {
   
   public typealias Index = Int
   
@@ -49,9 +49,21 @@ extension SplitComplexArray: RandomAccessCollection, MutableCollection {
       y[i] = value.y
     }
   }
+  
+  public init(_ slice: Slice<SplitComplexVector<RealType>>) {
+    self.init(
+      withExistingStorage: (
+        real: slice.base.x + slice.startIndex,
+        imaginary: slice.base.y + slice.startIndex
+      ),
+      ownedBy: slice.base.owner,
+      count: slice.count,
+      capacity: 0
+    )
+  }
 }
 
-extension SplitComplexArray: RangeReplaceableCollection {
+extension SplitComplexVector: RangeReplaceableCollection {
   public init() {
     self.init(unsafeUninitializedCapacity: 0) { x, y in 0 }
   }
@@ -91,16 +103,16 @@ extension SplitComplexArray: RangeReplaceableCollection {
       }
       newElements.formIndex(after: &index)
     }
-    self.count = count + delta
+    count += delta
   }
 }
 
 // MARK: - Conversions to/from other collections
 extension Array {
   /// Creates an array of `Complex` with the elements of the supplied
-  /// `SplitComplexArray`.
+  /// `SplitComplexVector`.
   @inlinable
-  public init<RealType>(_ split: SplitComplexArray<RealType>)
+  public init<RealType>(_ split: SplitComplexVector<RealType>)
   where Element == Complex<RealType> {
     // In theory, we don't need this; the existing Array init from
     // Sequence works just fine. But it's many times slower, so we
@@ -118,7 +130,7 @@ extension Array {
   }
 }
 
-extension SplitComplexArray {
+extension SplitComplexVector {
   @inlinable
   public init<RAC>(_ other: RAC)
   where RAC: RandomAccessCollection, RAC.Element == Complex<RealType> {
