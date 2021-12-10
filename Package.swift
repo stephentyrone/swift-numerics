@@ -27,7 +27,7 @@ let package = Package(
     // MARK: - Public API
     .target(
       name: "ComplexModule",
-      dependencies: ["RealModule"],
+      dependencies: ["RealModule", "_VectorPrimitives"],
       exclude: excludedFilenames
     ),
     
@@ -47,6 +47,11 @@ let package = Package(
       name: "RealModule",
       dependencies: ["_NumericsShims"],
       exclude: excludedFilenames
+    ),
+    
+    .target(
+      name: "_VectorPrimitives",
+      dependencies: ["RealModule"]
     ),
     
     // MARK: - Implementation details

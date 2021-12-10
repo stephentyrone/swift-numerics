@@ -39,14 +39,14 @@ extension SplitComplexVector: RandomAccessCollection, MutableCollection {
   @inlinable @inline(__always)
   public subscript(unchecked i: Int) -> Element {
     _read {
-      yield Complex(x[i], y[i])
+      yield Complex(x[i], conj ? -y[i] : y[i])
     }
     _modify {
       ensureUnique()
-      var value = Complex(x[i], y[i])
+      var value = Complex(x[i], conj ? -y[i] : y[i])
       yield &value
       x[i] = value.x
-      y[i] = value.y
+      y[i] = conj ? -value.y : value.y
     }
   }
   
@@ -58,7 +58,8 @@ extension SplitComplexVector: RandomAccessCollection, MutableCollection {
       ),
       ownedBy: slice.base.owner,
       count: slice.count,
-      capacity: 0
+      capacity: 0,
+      conj: slice.base.conj
     )
   }
 }
@@ -93,13 +94,14 @@ extension SplitComplexVector: RangeReplaceableCollection {
       (y + upper + delta).moveAssign(from: y + upper, count: tailCount - delta)
     }
     var index = newElements.startIndex
+    let sign: RealType = conj ? -1 : 1
     for i in lower ..< (upper + delta) {
       if i >= upper { // self[i] is uninitialized
         (x + i).initialize(to: newElements[index].real)
-        (y + i).initialize(to: newElements[index].imaginary)
+        (y + i).initialize(to: sign * newElements[index].imaginary)
       } else { // self[i] is already initialized.
         x[i] = newElements[index].real
-        y[i] = newElements[index].imaginary
+        y[i] = sign * newElements[index].imaginary
       }
       newElements.formIndex(after: &index)
     }

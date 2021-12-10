@@ -10,8 +10,10 @@
 //===----------------------------------------------------------------------===//
 
 import RealModule
+import _VectorPrimitives
 
 public struct SplitComplexVector<RealType: Real> {
+  
   @usableFromInline
   internal var x: UnsafeMutablePointer<RealType>
   
@@ -27,6 +29,9 @@ public struct SplitComplexVector<RealType: Real> {
   internal var capacity: Int
   
   @usableFromInline
+  internal var conj: Bool
+  
+  @usableFromInline
   internal var owner: (
     // The object that has ownership of the storage that x and y point
     // into, if the storage is owned (x and y may point into two separate
@@ -40,9 +45,8 @@ public struct SplitComplexVector<RealType: Real> {
   )
 }
 
-// MARK: - Low-level initializers
+// MARK: - Low-level implementation details
 extension SplitComplexVector {
-  
   /// Allocates a new SplitComplexVector with specified capacity, then
   /// calls the provided initializer.
   ///
@@ -70,6 +74,7 @@ extension SplitComplexVector {
     self.x = owner.buffer.baseAddress!
     self.y = self.x.advanced(by: self.capacity)
     self.count = initializer(self.x, self.y)
+    self.conj = false
     // Set owner, and register the buffer to recieve updates to count if
     // RealType is non-trivial.
     self.owner.object = owner
@@ -96,7 +101,8 @@ extension SplitComplexVector {
   ///
   ///   - owner: The object with ownership of the storage that the pointers
   ///     reference, and a callback to use if the count of initialized
-  ///     elements in the SplitComplexVector is updated.
+  ///     elements in the SplitComplexVector is updated; the callback is
+  ///     not called by this initializer.
   ///
   ///     The SplitComplexVector will maintain a reference to the owning
   ///     object. If there is no owning object because the memory is
@@ -117,33 +123,19 @@ extension SplitComplexVector {
       updateCount: ((Int) -> Void)?
     ) = (nil, nil),
     count: Int,
-    capacity: Int = 0
+    capacity: Int = 0,
+    conj: Bool = false
   ) {
     precondition(count > 0)
     precondition(capacity == 0 || capacity > count)
     self.capacity = capacity
     self.x = storage.real
     self.y = storage.imaginary
-    self.owner = owner
+    self.conj = false
     self.count = count
+    self.owner = owner
   }
   
-  /// A SplitComplexVector containing `count` copies of `value`.
-  public init(repeating value: Complex<RealType>, count: Int) {
-    self.init(unsafeUninitializedCapacity: count) { x, y in
-      x.initialize(repeating: value.x, count: count)
-      y.initialize(repeating: value.y, count: count)
-      return count
-    }
-  }
-  
-  /// An empty SplitComplexVector with space reserved for `capacity` values.
-  public init(capacity: Int) {
-    self.init(unsafeUninitializedCapacity: capacity) { x, y in 0 }
-  }
-}
-
-extension SplitComplexVector {
   @usableFromInline
   internal mutating func ensureUnique(
     minimumCapacity: Int = 0
@@ -172,18 +164,29 @@ extension SplitComplexVector {
       }
     }
   }
-}
-
-// MARK: - Formatting
-extension SplitComplexVector: CustomStringConvertible {
-  public var description: String {
-    return "[" + map(\.description).joined(separator: ", ") + "]"
+  
+  @usableFromInline
+  internal mutating func reifyConjugate() {
+    if conj {
+      ensureUnique()
+      smul(inPlace: y, -1, count)
+    }
   }
 }
 
-extension SplitComplexVector: ExpressibleByArrayLiteral {
-  public init(arrayLiteral elements: Complex<RealType>...) {
-    self.init(capacity: elements.count)
-    self.append(contentsOf: elements)
+// MARK: - Utility initializers
+extension SplitComplexVector {
+  /// A SplitComplexVector containing `count` copies of `value`.
+  public init(repeating value: Complex<RealType>, count: Int) {
+    self.init(unsafeUninitializedCapacity: count) { x, y in
+      x.initialize(repeating: value.x, count: count)
+      y.initialize(repeating: value.y, count: count)
+      return count
+    }
+  }
+  
+  /// An empty SplitComplexVector with space reserved for `capacity` values.
+  public init(capacity: Int) {
+    self.init(unsafeUninitializedCapacity: capacity) { x, y in 0 }
   }
 }
