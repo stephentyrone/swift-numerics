@@ -9,6 +9,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+@_exported import ComplexModule
+
 import RealModule
 import _VectorPrimitives
 
@@ -179,8 +181,8 @@ extension SplitComplexVector {
   /// A SplitComplexVector containing `count` copies of `value`.
   public init(repeating value: Complex<RealType>, count: Int) {
     self.init(unsafeUninitializedCapacity: count) { x, y in
-      x.initialize(repeating: value.x, count: count)
-      y.initialize(repeating: value.y, count: count)
+      x.initialize(repeating: value.real, count: count)
+      y.initialize(repeating: value.imaginary, count: count)
       return count
     }
   }

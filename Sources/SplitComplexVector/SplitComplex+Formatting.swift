@@ -1,3 +1,5 @@
+import ComplexModule
+
 extension SplitComplexVector: CustomStringConvertible {
   public var description: String {
     return "[" + map(\.description).joined(separator: ", ") + "]"

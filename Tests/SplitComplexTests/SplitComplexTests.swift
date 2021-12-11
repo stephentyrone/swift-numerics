@@ -10,7 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 import XCTest
-import ComplexModule
+import SplitComplexVector
 import RealModule
 
 final class SplitComplexTests: XCTestCase {

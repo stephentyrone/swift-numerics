@@ -1,4 +1,4 @@
-//===--- SplitComplex+Accelerate.swift ------------------------*- swift -*-===//
+//===--- SplitComplex+Codable.swift ---------------------------*- swift -*-===//
 //
 // This source file is part of the Swift Numerics open source project
 //
@@ -8,6 +8,8 @@
 // See https://swift.org/LICENSE.txt for license information
 //
 //===----------------------------------------------------------------------===//
+
+import ComplexModule
 
 // FloatingPoint does not refine Codable, so this is a conditional conformance.
 extension SplitComplexVector: Decodable where RealType: Decodable {

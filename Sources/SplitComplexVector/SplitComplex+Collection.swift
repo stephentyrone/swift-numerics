@@ -9,7 +9,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import RealModule
+import ComplexModule
 
 // MARK: - Collection conformances
 extension SplitComplexVector: RandomAccessCollection, MutableCollection {
@@ -45,8 +45,8 @@ extension SplitComplexVector: RandomAccessCollection, MutableCollection {
       ensureUnique()
       var value = Complex(x[i], conj ? -y[i] : y[i])
       yield &value
-      x[i] = value.x
-      y[i] = conj ? -value.y : value.y
+      x[i] = value.real
+      y[i] = conj ? -value.imaginary : value.imaginary
     }
   }
   

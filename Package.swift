@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.5
 //===--- Package.swift ----------------------------------------*- swift -*-===//
 //
 // This source file is part of the Swift Numerics open source project
@@ -50,8 +50,9 @@ let package = Package(
     ),
     
     .target(
-      name: "_VectorPrimitives",
-      dependencies: ["RealModule"]
+      name: "SplitComplexVector",
+      dependencies: ["ComplexModule", "_VectorPrimitives"],
+      exclude: excludedFilenames
     ),
     
     // MARK: - Implementation details
@@ -65,6 +66,11 @@ let package = Package(
       name: "_TestSupport",
       dependencies: ["Numerics"],
       exclude: ["CMakeLists.txt"]
+    ),
+    
+    .target(
+      name: "_VectorPrimitives",
+      dependencies: ["RealModule"]
     ),
     
     // MARK: - Unit test bundles
@@ -83,6 +89,12 @@ let package = Package(
     .testTarget(
       name: "RealTests",
       dependencies: ["_TestSupport"],
+      exclude: ["CMakeLists.txt"]
+    ),
+    
+    .testTarget(
+      name: "SplitComplexTests",
+      dependencies: ["SplitComplexVector", "_TestSupport"],
       exclude: ["CMakeLists.txt"]
     ),
     
