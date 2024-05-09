@@ -229,4 +229,11 @@ extension Double: Real {
   public static func _relaxedMul(_ a: Double, _ b: Double) -> Double {
     _numerics_relaxed_mul(a, b)
   }
+  
+#if canImport(Darwin)
+  @_transparent
+  public static func cos(piTimes x: Double) -> Double {
+    libm_cospi(x)
+  }
+#endif
 }

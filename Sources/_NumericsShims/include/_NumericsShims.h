@@ -26,6 +26,12 @@
 // especially if people start using this package on systems that are not
 // Darwin or Ubuntu.
 
+// MARK: - math functions for float16
+#if __APPLE__ && __arm64__
+HEADER_SHIM _Float16 swift_cospif16(_Float16 x);
+HEADER_SHIM _Float16 swift_sinpif16(_Float16 x);
+#endif
+
 // MARK: - math functions for float
 HEADER_SHIM float libm_cosf(float x) {
   return __builtin_cosf(x);
@@ -150,6 +156,23 @@ HEADER_SHIM float libm_lgammaf(float x, int *signp) {
 }
 #endif
 
+#if __APPLE__
+HEADER_SHIM float libm_cospif(float x) {
+  extern float __cospif(float);
+  return __cospif(x);
+}
+
+HEADER_SHIM float libm_sinpif(float x) {
+  extern float __sinpif(float);
+  return __sinpif(x);
+}
+
+HEADER_SHIM float libm_tanpif(float x) {
+  extern float __tanpif(float);
+  return __tanpif(x);
+}
+#endif
+
 // MARK: - math functions for double
 
 HEADER_SHIM double libm_cos(double x) {
@@ -267,6 +290,23 @@ HEADER_SHIM double libm_log10(double x) {
 HEADER_SHIM double libm_lgamma(double x, int *signp) {
   extern double lgamma_r(double, int *);
   return lgamma_r(x, signp);
+}
+#endif
+
+#if __APPLE__
+HEADER_SHIM double libm_cospi(double x) {
+  extern double __cospi(double);
+  return __cospi(x);
+}
+
+HEADER_SHIM double libm_sinpi(double x) {
+  extern double __sinpi(double);
+  return __sinpi(x);
+}
+
+HEADER_SHIM double libm_tanpi(double x) {
+  extern double __tanpi(double);
+  return __tanpi(x);
 }
 #endif
 
@@ -448,5 +488,37 @@ HEADER_SHIM long double _numerics_relaxed_mull(long double a, long double b) {
 HEADER_SHIM void _numerics_optimization_barrier(const void *pointer) {
   __asm("": :"r" (pointer));
 }
+
+#if __arm64__
+HEADER_SHIM _Float16 _numerics_false_dependency_f16(_Float16 value, _Float16 dep) {
+  __asm("ins %0.h[1], %1.h[0]" : "+w" (value) : "w" (dep));
+  return value;
+}
+
+HEADER_SHIM float _numerics_false_dependency_f32(float value, float dep) {
+  __asm("ins %0.s[1], %1.s[0]" : "+w" (value) : "w" (dep));
+  return value;
+}
+
+HEADER_SHIM double _numerics_false_dependency_f64(double value, double dep) {
+  __asm("ins %0.d[1], %1.d[0]" : "+w" (value) : "w" (dep));
+  return value;
+}
+#elif __x86_64__
+HEADER_SHIM _Float16 _numerics_false_dependency_f16(_Float16 value, _Float16 dep) {
+  __asm("movlhps %0, %1" : "+x" (value) : "x" (dep));
+  return value;
+}
+
+HEADER_SHIM float _numerics_false_dependency_f32(float value, float dep) {
+  __asm("movlhps %0, %1" : "+x" (value) : "x" (dep));
+  return value;
+}
+
+HEADER_SHIM double _numerics_false_dependency_f64(double value, double dep) {
+  __asm("movlhps %0, %1" : "+x" (value) : "x" (dep));
+  return value;
+}
+#endif
 
 #undef CLANG_RELAX_FP
