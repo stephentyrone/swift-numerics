@@ -218,11 +218,7 @@ extension Float16: Real {
     //  ¹ https://github.com/apple/swift/pull/73519 will make it available
     //    in the future.
     guard x.isFinite else { return .nan }
-    //  (n, f) such that 2x = n + f exactly, with n an integer and f in
-    //  -0.5...0.5.
-    let (n, f) = reduce(piTimes: x)
-    //  Compute all four of [cos(πf/2),-sin(πf/2),-cos(πf/2), sin(πf/2)]
-    //  simultaneously.
+    let (n, f) = reduceMod½(x)
     let r = trigPiCore(f)
     //  Select the appropriate result based on the low-order two bits of n.
     return Float16(r[n & 3])
@@ -243,31 +239,28 @@ extension Float16: Real {
     //  to apply later, but everything else is pretty much the same.
     let sign = x.bitPattern & 0x8000
     let x = x.magnitude
-    //  (n, f) such that 2x = n + f exactly, with n an integer and f in
-    //  -0.5...0.5.
-    let (n, f) = reduce(piTimes: x)
-    //  Compute all four of [cos(πf/2),-sin(πf/2),-cos(πf/2), sin(πf/2)]
-    //  simultaneously.
+    let (n, f) = reduceMod½(x)
     let r = trigPiCore(f)
     //  Select the appropriate result based on the low-order two bits of n.
     return Float16(bitPattern: Float16(r[(n-1) & 3]).bitPattern ^ sign)
   }
   
-  /// (n, f) such that 2x = n + f exactly, with n an integer and f in
-  /// -0.5...0.5.
-  ///
-  /// Nothing in this reduction requires any extra precision; we convert to
-  /// Float early just so we don't need to worry about overflow when computing
-  /// 2x, but it would also be viable to detect |x| >= 2¹¹ earlier, since
-  /// those values are all even integers (and therefore trivial for sin(πx)
-  /// and cos(πx)).
-  static func reduce(piTimes x: Float16) -> (Int, Float) {
+  /// (n, f) such that 2x = n + f exactly, with n an integer and f in -½...½
+  static func reduceMod½(_ x: Float16) -> (Int, Float) {
+    // Nothing in this reduction requires any extra precision; we convert to
+    // Float so we don't need to worry about overflow on multiplying 2x. The
+    // following polynomial evaluation will be done in Float anyway, so this
+    // doesn't cost us anything. (For a SIMD implementation, I might stay in
+    // Float16 but use select to replace large enough x with zero, since all
+    // sufficently large floating-point values are even integers.)
     let x = Float(x)
     let n = (2*x).rounded(.toNearestOrEven)
     let f = (2*x) - n
     return (Int(n), f)
   }
   
+  //  Compute all four of [cos(πf/2),-sin(πf/2),-cos(πf/2), sin(πf/2)]
+  //  simultaneously, returning the result in a SIMD4<Float>.
   static func trigPiCore(_ x: Float) -> SIMD4<Float> {
     let c₃ = SIMD4<Float>(-0x1.4eabcap-6, -0x1.40cc40p-4,  0x1.4eabcap-6,  0x1.40cc40p-4)
     let c₂ = SIMD4<Float>( 0x1.03b17ap-2,  0x1.4aac48p-1, -0x1.03b17ap-2, -0x1.4aac48p-1)
@@ -299,6 +292,33 @@ extension Float16: Real {
     return Float16(x*r)
   }
 #endif
+  
+  /*
+  public static func tan(piTimes x: Float16) -> Float16 {
+    guard x.isFinite else { return .nan }
+    if x.sign == .minus { return -tan(piTimes: -x) }
+    let (n, f) = reduceMod¼(x)
+    switch n & 7 {
+    case 0: return f == 0 ?  0 : Float16(.tan(.pi/4 * f))
+    case 1: return f == 0 ?  1 : Float16(.tan(.pi/4 * (f+1)))
+    case 2: return f == 0 ? infinity : -Float16(1 / .tan(.pi/4 * f))
+    case 3: return f == 0 ? -1 : Float16(.tan(.pi/4 * (f-1)))
+    case 4: return f == 0 ? -0 : Float16(.tan(.pi/4 * f))
+    case 5: return f == 0 ?  1 : Float16(.tan(.pi/4 * (f+1)))
+    case 6: return f == 0 ? -infinity : -Float16(1 / .tan(.pi/4 * f))
+    case 7: return f == 0 ? -1 : Float16(.tan(.pi/4 * (f-1)))
+    default: fatalError()
+    }
+  }
+  
+  /// (n, f) such that 4x = n + f exactly, with n an integer and f in -½...½
+  static func reduceMod¼(_ x: Float16) -> (Int, Float) {
+    let x = Float(x)
+    let n = (4*x).rounded(.toNearestOrEven)
+    let f = (4*x) - n
+    return (Int(n), f)
+  }
+   */
 }
 
 #endif

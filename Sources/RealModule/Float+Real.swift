@@ -203,10 +203,20 @@ extension Float: Real {
     _numerics_relaxed_mulf(a, b)
   }
   
-  #if canImport(Darwin)
+#if canImport(Darwin)
   @_transparent
   public static func cos(piTimes x: Float) -> Float {
     libm_cospif(x)
   }
-  #endif
+  
+  @_transparent
+  public static func sin(piTimes x: Float) -> Float {
+    libm_sinpif(x)
+  }
+  
+  @_transparent
+  public static func tan(piTimes x: Float) -> Float {
+    libm_tanpif(x)
+  }
+#endif
 }

@@ -201,4 +201,66 @@ final class SinPiTests: XCTestCase {
 #endif
   }
 #endif
+  
+  func testFloatPerformance_m2_2() {
+    let data = (0 ..< 1024).map { _ in Float.random(in: -2 ... 2) }
+    let clock = SuspendingClock()
+    
+    var throughput = [Duration]()
+    for _ in 0 ..< 100 {
+      let time = clock.measure {
+        for val in data {
+          blackHole(Float.sin(piTimes: val))
+        }
+      }
+      throughput.append(time * 1/1024.0)
+    }
+    print("Throughput: \(throughput.min()!) / element")
+    
+#if arch(arm64) || arch(x86_64)
+    var latency = [Duration]()
+    for _ in 0 ..< 100 {
+      let time = clock.measure {
+        var carry: Float = 0
+        for val in data {
+          carry = Float.sin(piTimes: val.insertDependency(on: carry))
+        }
+        blackHole(carry)
+      }
+      latency.append(time * 1/1024.0)
+    }
+    print("Latency: \(latency.min()!) / element")
+#endif
+  }
+  
+  func testDoublePerformance_m2_2() {
+    let data = (0 ..< 1024).map { _ in Double.random(in: -2 ... 2) }
+    let clock = SuspendingClock()
+    
+    var throughput = [Duration]()
+    for _ in 0 ..< 100 {
+      let time = clock.measure {
+        for val in data {
+          blackHole(Double.sin(piTimes: val))
+        }
+      }
+      throughput.append(time * 1/1024.0)
+    }
+    print("Throughput: \(throughput.min()!) / element")
+    
+#if arch(arm64)
+    var latency = [Duration]()
+    for _ in 0 ..< 100 {
+      let time = clock.measure {
+        var carry: Double = 0
+        for val in data {
+          carry = Double.sin(piTimes: val.insertDependency(on: carry))
+        }
+        blackHole(carry)
+      }
+      latency.append(time * 1/1024.0)
+    }
+    print("Latency: \(latency.min()!) / element")
+#endif
+  }
 }

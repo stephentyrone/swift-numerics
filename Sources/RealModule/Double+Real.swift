@@ -235,5 +235,15 @@ extension Double: Real {
   public static func cos(piTimes x: Double) -> Double {
     libm_cospi(x)
   }
+  
+  @_transparent
+  public static func sin(piTimes x: Double) -> Double {
+    libm_sinpi(x)
+  }
+  
+  @_transparent
+  public static func tan(piTimes x: Double) -> Double {
+    libm_tanpi(x)
+  }
 #endif
 }

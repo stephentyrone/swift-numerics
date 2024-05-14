@@ -243,32 +243,7 @@ extension Real where Self: BinaryFloatingPoint {
   
   @inlinable
   public static func tan(piTimes x: Self) -> Self {
-    // If x is not finite, the result is nan.
-    guard x.isFinite else { return .nan }
-    // If x is negative, compute tan(-πx), then flip the sign.
-    if x.sign == .minus { return -tan(piTimes: x.magnitude) }
-    // If x.magnitude is finite and at least .radix / .ulpOfOne, it is an
-    // even integer, which means that sin(piTimes: x) is ±0.0 and
-    // cos(piTimes: x) is 1.0.
-    if x.magnitude >= Self(Self.radix) / .ulpOfOne {
-      return Self(signOf: x, magnitudeOf: 0)
-    }
-    // Break x up as x = n/2 + f where n is an integer. In binary, the
-    // following computation is always exact, and trivially gives the
-    // correct result.
-    let n = (2*x).rounded(.toNearestOrEven)
-    let f = x.addingProduct(-1/2, n)
-    // Because tangent is 2π-periodic, we don't actually care about
-    // most of n; we only need the two least significant bits of n
-    // represented as an integer:
-    let sector = n._lowWord & 0x3
-    switch sector {
-    case 0: return    tan(.pi * f)
-    case 1: return  1/tan(.pi * f)
-    case 2: return   -tan(.pi * f)
-    case 3: return -1/tan(.pi * f)
-    default: fatalError()
-    }
+    return sin(piTimes: x)/cos(piTimes: x)
   }
 }
 

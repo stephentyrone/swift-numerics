@@ -262,7 +262,7 @@ public protocol RealFunctions: ElementaryFunctions {
   /// accurate possible result.
   ///
   /// **Symmetry:**
-  /// sine is an even function. Thus for every finite `x`,
+  /// sine is an odd function. Thus for every finite `x`,
   /// ```swift
   /// .sin(piTimes: -x) == -.sin(piTimes: x)
   /// ```
@@ -304,19 +304,39 @@ public protocol RealFunctions: ElementaryFunctions {
   /// given above. Every step of both computations is producing the most
   /// accurate possible result.
   ///
-  /// Symmetry:
-  /// -
-  /// `.tan(piTimes: -x) = -.tan(piTimes: x)`.
+  /// **Symmetry:**
+  /// tangent is an odd function. Thus for every finite `x`,
+  /// ```swift
+  /// .tan(piTimes: -x) == -.tan(piTimes: x)
+  /// ```
   ///
-  /// Edge cases:
-  /// -
+  /// **Exact values and edge cases:**
+  /// - If x is not finite, `tan(piTimes: x)` is NaN.
+  /// - If x is an integer, `tan(piTimes: x)` is zero, with the sign given
+  ///   by `sin(piTimes: x)/cos(piTimes: x)`.
+  /// - If x is a half-integer, `tan(piTimes: x)` is infinity, with the sign
+  ///   given by `sin(piTimes: x)/cos(piTimes: x)`
   ///
+  ///   Thus, if `n` is a positive even integral value and `n.ulp <= 0.5`:
+  ///   - `tan(piTimes: n)` is +0/+1 = +0
+  ///   - `tan(piTimes: n + 0.5)` is +1/+0 = +infinity
+  ///   - `tan(piTimes: n + 1.0)` is +0/-1 = -0
+  ///   - `tan(piTimes: n + 1.5)` is -1/+0 = -infinity
   ///
-  /// See also:
-  /// -
-  /// - `cos(piTimes:)`
-  /// - `sin(piTimes:)`
-  /// - `ElementaryFunctions.tan(_:)`
+  ///   This means that `tan(piTimes:)` is 2-periodic, even though the
+  ///   mathematical tangent function is π-periodic (not 2π).
+  ///
+  ///   > Note:
+  ///     _All_ finite values with magnitude greater than or equal to
+  ///     `(2/.ulpOfOne)` are even integers.
+  ///     E.g. `Double.ulpOfOne` is 2⁻⁵², so for every `Double` x with
+  ///     `x.magnitude` >= 2⁵³, `tan(piTimes: x)` is ±0.
+  ///
+  /// **See also:**
+  /// ``cos(piTimes:)``,
+  /// ``sin(piTimes:)``,
+  /// ``atanOverPi(_:)``,
+  /// ``ElementaryFunctions/tan(_:)``
   static func tan(piTimes x: Self) -> Self
 }
 
