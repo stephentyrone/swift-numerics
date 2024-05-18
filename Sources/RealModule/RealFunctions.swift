@@ -16,17 +16,18 @@ public protocol RealFunctions: ElementaryFunctions {
   /// between the positive real axis and the point `(x, y)`. The result
   /// is in the range [-π, π], and its sign matches the sign of y.
   ///
-  /// Warning:
-  /// -
+  /// > Warning:
   /// Note the parameter ordering of this function; the `y` parameter
   /// comes *before* the `x` parameter. This is a historical curiosity
   /// going back to early FORTRAN math libraries. In order to minimize
   /// opportunities for confusion and subtle bugs, we require explicit
   /// parameter labels with this function.
   ///
-  /// See also:
-  /// -
-  /// - `ElementaryFunctions.atan(_:)`
+  /// **See also:**
+  /// ``ElementaryFunctions/acos(_:)``,
+  /// ``ElementaryFunctions/asin(_:)``,
+  /// ``ElementaryFunctions/atan(_:)``,
+  /// ``atan2OverPi(y:x:)``
   ///
   /// [wiki]: https://en.wikipedia.org/wiki/Atan2
   static func atan2(y: Self, x: Self) -> Self
@@ -142,20 +143,59 @@ public protocol RealFunctions: ElementaryFunctions {
 
   // MARK: Trig-π functions
   
-  /// The [arccosine][wiki]  (inverse tangent) of `x`, scaled by 1/π.
+  /// The [arccosine][wiki] (inverse cosine) of `x`, scaled by 1/π.
   ///
-  /// See also:
-  /// -
-  /// - `ElementaryFunctions.acos(_:)`
+  /// If `x.magnitude <= 1`, the result is the angle (in half-turns) formed
+  /// between the positive real axis and the vector `(x, √(1-x²))`. This is
+  /// the value `y` in `-0.5...0.5` such that ``cos(piTimes: y)`` is `x` up
+  /// to floating-point rounding.
+  ///
+  /// **Exact values and edge cases:**
+  /// - If x is not in `-1...1`, then `acosOverPi(x)` is NaN.
+  /// - If x is -1, then `acosOverPi(x)` is `1.0`.
+  /// - If x is ±0, then `acosOverPi(x)` is `0.5`.
+  /// - If x is +1, then `acosOverPi(x)` is `0.0`.
+  ///
+  /// **See also:**
+  /// - Other inverse-trig functions scaled by π:
+  ///   ``asinOverPi(_:)``, ``atanOverPi(_:)``, ``atan2OverPi(y:x:)``
+  /// - Trig functions scaled by π:
+  ///   ``cos(piTimes:)``, ``sin(piTimes:)``, ``tan(piTimes:)``
+  /// - Unscaled inverse trig functions, returning results in radians:
+  ///   ``ElementaryFunctions/acos(_:)``,
+  ///   ``ElementaryFunctions/asin(_:)``,
+  ///   ``ElementaryFunctions/atan(_:)``,
+  ///   ``atan2(y:x:)``
   ///
   /// [wiki]: https://en.wikipedia.org/wiki/Inverse_trigonometric_functions
   static func acosOverPi(_ x: Self) -> Self
   
-  /// The [arcsine][wiki]  (inverse tangent) of `x`, scaled by 1/π.
+  /// The [arcsine][wiki]  (inverse sine) of `x`, scaled by 1/π.
   ///
-  /// See also:
-  /// -
-  /// - `ElementaryFunctions.asin(_:)`
+  /// If `x.magnitude <= 1`, the result is the angle (in half-turns) formed
+  /// between the positive real axis and the vector `(√(1-x²), x)`. This is
+  /// the value `y` in `-0.5...0.5` such that ``sin(piTimes: y)`` is `x` up
+  /// to floating-point rounding.
+  ///
+  /// **Symmetry:**
+  /// arcsine is an odd function. Thus `asinOverPi(-x)` is the same as
+  /// `-asinOverPi(x)`.
+  ///
+  /// **Exact values and edge cases:**
+  /// - If x is not in `-1...1`, then `asinOverPi(x)` is NaN.
+  /// - If x is ±1, then `asinOverPi(x)` is `±0.5`.
+  /// - If x is ±0, then `asinOverPi(x)` is x.
+  ///
+  /// **See also:**
+  /// - Other inverse-trig functions scaled by π:
+  ///   ``acosOverPi(_:)``, ``atanOverPi(_:)``, ``atan2OverPi(y:x:)``
+  /// - Trig functions scaled by π:
+  ///   ``cos(piTimes:)``, ``sin(piTimes:)``, ``tan(piTimes:)``
+  /// - Unscaled inverse trig functions, returning results in radians:
+  ///   ``ElementaryFunctions/acos(_:)``,
+  ///   ``ElementaryFunctions/asin(_:)``,
+  ///   ``ElementaryFunctions/atan(_:)``,
+  ///   ``atan2(y:x:)``
   ///
   /// [wiki]: https://en.wikipedia.org/wiki/Inverse_trigonometric_functions
   static func asinOverPi(_ x: Self) -> Self
@@ -167,8 +207,7 @@ public protocol RealFunctions: ElementaryFunctions {
   /// in the range [-1, 1]) formed between the positive real axis and the
   /// point `(x,y)`. The sign of the result always matches the sign of y.
   ///
-  /// Warning:
-  /// -
+  /// > Warning:
   /// Note the parameter ordering of this function; the `y` parameter
   /// comes *before* the `x` parameter. This is a historical curiosity
   /// going back to early FORTRAN math libraries (the ordering makes
@@ -177,33 +216,51 @@ public protocol RealFunctions: ElementaryFunctions {
   /// confusion and subtle bugs, we require explicit parameter labels
   /// with this function.
   ///
-  /// See also:
-  /// -
-  /// - `ElementaryFunctions.atan(_:)`
-  /// - `ElementaryFunctions.atan2(y:x:)`
-  /// - `atanOverPi(_:)`
+  /// **See Also:**
+  /// - Other inverse-trig functions scaled by π:
+  ///   ``acosOverPi(_:)``, ``asinOverPi(_:)``, ``atanOverPi(_:)``
+  /// - Trig functions scaled by π:
+  ///   ``cos(piTimes:)``, ``sin(piTimes:)``, ``tan(piTimes:)``
+  /// - Unscaled inverse trig functions, returning results in radians:
+  ///   ``ElementaryFunctions/acos(_:)``,
+  ///   ``ElementaryFunctions/asin(_:)``,
+  ///   ``ElementaryFunctions/atan(_:)``,
+  ///   ``atan2(y:x:)``
   ///
   /// [wiki]: https://en.wikipedia.org/wiki/Atan2
   static func atan2OverPi(y: Self, x: Self) -> Self
   
-  /// The [arctangent][wiki]  (inverse tangent) of `y`, scaled by 1/π.
+  /// The [arctangent][wiki]  (inverse tangent) of `x`, scaled by 1/π.
   ///
   /// The angle (in half-turns) formed between the positive real axis
-  /// and the point `(1, y)`. The sign of the result matches the sign
-  /// of y, and is in the range [-1/2, 1/2].
+  /// and the point `(1, x)`. This is the value `y` in `-0.5...0.5`
+  /// such that ``tan(piTimes: y)`` is `x` up to floating-point rounding.
   ///
-  /// See also:
-  /// -
-  /// - `ElementaryFunctions.atan(_:)`
-  /// - `ElementaryFunctions.atan2(_:_:)`
-  /// - `ElementaryFunctions.atan2OverPi(_:_:)`
+  /// **Symmetry:**
+  /// arctangent is an odd function. Thus `atanOverPi(-x)` is the same as
+  /// `-atanOverPi(x)`.
+  ///
+  /// **Exact values and edge cases:**
+  /// - If x is NaN, then `atanOverPi(x)` is NaN.
+  /// - If x is ±infinty, then `atanOverPi(x)` is `±0.5`.
+  /// - If x is ±1, then `atanOverPi(x)` is `±0.25`.
+  /// - If x is ±0, then `atanOverPi(x)` is x.
+  ///
+  /// **See Also:**
+  /// - Other inverse-trig functions scaled by π:
+  ///   ``acosOverPi(_:)``, ``asinOverPi(_:)``, ``atan2OverPi(y:x:)``
+  /// - Trig functions scaled by π:
+  ///   ``cos(piTimes:)``, ``sin(piTimes:)``, ``tan(piTimes:)``
+  /// - Unscaled inverse trig functions, returning results in radians:
+  ///   ``ElementaryFunctions/acos(_:)``,
+  ///   ``ElementaryFunctions/asin(_:)``,
+  ///   ``ElementaryFunctions/atan(_:)``,
+  ///   ``atan2(y:x:)``
   ///
   /// [wiki]: https://en.wikipedia.org/wiki/Inverse_trigonometric_functions
-  static func atanOverPi(_ y: Self) -> Self
+  static func atanOverPi(_ x: Self) -> Self
   
-  /// `cos(πx)`
-  ///
-  /// Computes the cosine of π times `x`.
+  /// The [cosine][wiki] of π times `x`.
   ///
   /// Because π is not representable in any `FloatingPoint` type, for large
   /// `x`, `.cos(.pi * x)` can have arbitrarily large relative error;
@@ -238,15 +295,22 @@ public protocol RealFunctions: ElementaryFunctions {
   ///   then `cos(piTimes: x)` is +0.
   ///
   /// **See also:**
-  /// ``sin(piTimes:)``,
-  /// ``tan(piTimes:)``,
-  /// ``acosOverPi(_:)``,
-  /// and ``ElementaryFunctions/cos(_:)``.
+  /// - Other trig functions scaled by π:
+  ///   ``sin(piTimes:)``, ``tan(piTimes:)``
+  /// - Inverse-trig functions scaled by π:
+  ///   ``acosOverPi(_:)``, ``asinOverPi(_:)``, ``atan2OverPi(y:x:)``,
+  ///   ``atanOverPi(_:)``
+  /// - Unscaled trig functions, taking arguments in radians:
+  ///   ``ElementaryFunctions/cos(_:)``,
+  ///   ``ElementaryFunctions/sin(_:)``,
+  ///   ``ElementaryFunctions/tan(_:)``
+  /// - `cos(x) - 1` (aka negative versine):
+  ///   ``Real/cosMinusOne(_:)`` 
+  ///
+  /// [wiki]: https://en.wikipedia.org/wiki/Sine_and_cosine
   static func cos(piTimes x: Self) -> Self
   
-  /// `sin(πx)`
-  ///
-  /// Computes the sine of π times `x`.
+  /// The [sine][wiki] of π times `x`.
   ///
   /// Because π is not representable in any `FloatingPoint` type, for large
   /// `x`, `.sin(.pi * x)` can have arbitrarily large relative error;
@@ -280,15 +344,20 @@ public protocol RealFunctions: ElementaryFunctions {
   ///   then `sin(piTimes: x)` is 1 if n is even and -1 if n is odd.
   ///
   /// **See also:**
-  /// ``cos(piTimes:)``,
-  /// ``tan(piTimes:)``,
-  /// ``asinOverPi(_:)``,
-  /// and ``ElementaryFunctions/sin(_:)``.
+  /// - Other trig functions scaled by π:
+  ///   ``cos(piTimes:)``, ``tan(piTimes:)``
+  /// - Inverse-trig functions scaled by π:
+  ///   ``acosOverPi(_:)``, ``asinOverPi(_:)``, ``atan2OverPi(y:x:)``,
+  ///   ``atanOverPi(_:)``
+  /// - Unscaled trig functions, taking arguments in radians:
+  ///   ``ElementaryFunctions/cos(_:)``,
+  ///   ``ElementaryFunctions/sin(_:)``,
+  ///   ``ElementaryFunctions/tan(_:)``
+  ///
+  /// [wiki]: https://en.wikipedia.org/wiki/Sine_and_cosine
   static func sin(piTimes x: Self) -> Self
   
-  /// `tan(πx)`
-  ///
-  /// Computes the tangent of π times `x`.
+  /// The [tangent][wiki] of π times `x`.
   ///
   /// Because π is not representable in any `FloatingPoint` type, for
   /// large `x`, `.tan(.pi * x)` can have arbitrarily large relative
@@ -333,10 +402,17 @@ public protocol RealFunctions: ElementaryFunctions {
   ///     `x.magnitude` >= 2⁵³, `tan(piTimes: x)` is ±0.
   ///
   /// **See also:**
-  /// ``cos(piTimes:)``,
-  /// ``sin(piTimes:)``,
-  /// ``atanOverPi(_:)``,
-  /// ``ElementaryFunctions/tan(_:)``
+  /// - Other trig functions scaled by π:
+  ///   ``cos(piTimes:)``, ``sin(piTimes:)``
+  /// - Inverse-trig functions scaled by π:
+  ///   ``acosOverPi(_:)``, ``asinOverPi(_:)``, ``atan2OverPi(y:x:)``,
+  ///   ``atanOverPi(_:)``
+  /// - Unscaled trig functions, taking arguments in radians:
+  ///   ``ElementaryFunctions/cos(_:)``,
+  ///   ``ElementaryFunctions/sin(_:)``,
+  ///   ``ElementaryFunctions/tan(_:)``
+  ///
+  /// [wiki]: https://en.wikipedia.org/wiki/Trigonometric_functions
   static func tan(piTimes x: Self) -> Self
 }
 

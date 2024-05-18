@@ -1,4 +1,4 @@
-//===--- sincospif16.h -------------------------------------------*- swift -*-===//
+//===--- sincospif16.s -------------------------------------------*- swift -*-===//
 //
 // This source file is part of the Swift Numerics open source project
 //
