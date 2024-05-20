@@ -11,10 +11,14 @@
 
 #if __APPLE__ && __arm64__
 // This file defines the following entrypoints:
-// - swift_cospif16: Computes cos(πx) correctly-rounded in Float16.
+// - swift_cospif16: Computes cos(πx) correctly-rounded¹ in Float16.
 .globl _swift_cospif16
-// - swift_sinpif16: Computes sin(πx) correctly-rounded in Float16.
+// - swift_sinpif16: Computes sin(πx) correctly-rounded¹ in Float16.
 .globl _swift_sinpif16
+// ----------------
+// ¹ Assuming default rounding; if a non-default rounding-mode is active,
+//   the result may have an error of up to 1+ε ULP for some quite-small ε.
+
 
 //  TODO: Adapt symbol mangling and assembly syntax and directives as needed
 //  to work on non-Apple targets.
@@ -41,6 +45,7 @@ _swift_cospif16:
     eor.8b  v2,     v2, v2  // no bias for phase when computing cosine.
     b       Lsincospif16Core
 
+.p2align 4
 _swift_sinpif16:
     fmov    w0,         s0
     and     w1,     w0, #0x8000 // sign of zero result matches sign of x.
