@@ -16,7 +16,7 @@ extension FixedWidthInteger {
   /// but it is useful for writing algorithms that are generic over
   /// signed and unsigned integers.
   @inline(__always) @usableFromInline
-  var signbit: Self {
+  package var signbit: Self {
     return self < .zero ? ~.zero : .zero
   }
   

@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.9
 //===--- Package.swift ----------------------------------------*- swift -*-===//
 //
 // This source file is part of the Swift Numerics open source project
@@ -32,6 +32,11 @@ let package = Package(
     ),
     
     .target(
+      name: "FixedPointModule",
+      dependencies: ["IntegerUtilities"]
+    ),
+    
+    .target(
       name: "IntegerUtilities",
       dependencies: [],
       exclude: excludedFilenames
@@ -39,7 +44,12 @@ let package = Package(
     
     .target(
       name: "Numerics",
-      dependencies: ["ComplexModule", "IntegerUtilities", "RealModule"],
+      dependencies: [
+        "ComplexModule",
+        "FixedPointModule",
+        "IntegerUtilities",
+        "RealModule"
+      ],
       exclude: excludedFilenames
     ),
     
@@ -69,6 +79,11 @@ let package = Package(
       name: "ComplexTests",
       dependencies: ["_TestSupport"],
       exclude: ["CMakeLists.txt"]
+    ),
+  
+    .testTarget(
+      name: "FixedPointTests",
+      dependencies: ["FixedPointModule"]
     ),
     
     .testTarget(
