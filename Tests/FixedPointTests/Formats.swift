@@ -11,7 +11,7 @@
 
 import FixedPointModule
 
-internal struct Int8Q3: FixedPoint {
+internal struct Int8Q3: SignedFixedPoint {
   public var bitPattern: Int8
   @_transparent public static var fractionBits: Int { 3 }
   @_transparent public init(bitPattern: Int8) {
@@ -19,7 +19,7 @@ internal struct Int8Q3: FixedPoint {
   }
 }
 
-internal struct Int8Q7: FixedPoint {
+internal struct Int8Q7: SignedFixedPoint {
   public var bitPattern: Int8
   @_transparent public static var fractionBits: Int { 7 }
   @_transparent public init(bitPattern: Int8) {
@@ -35,7 +35,7 @@ internal struct UIntQ8: FixedPoint {
   }
 }
 
-internal struct Int32Q6: FixedPoint {
+internal struct Int32Q6: SignedFixedPoint {
   public var bitPattern: Int32
   @_transparent public static var fractionBits: Int { 6 }
   @_transparent public init(bitPattern: Int32) {

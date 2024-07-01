@@ -11,20 +11,6 @@
 
 import IntegerUtilities
 
-extension FixedPoint where IntegerType: UnsignedInteger {
-  public typealias Magnitude = Self
-  @_transparent
-  public var magnitude: Self { self }
-}
-
-extension FixedPoint where IntegerType: SignedInteger {
-  public typealias Magnitude = FixedPointMagnitude<Self>
-  @_transparent
-  public var magnitude: FixedPointMagnitude<Self> {
-    FixedPointMagnitude(bitPattern: self.bitPattern.magnitude)
-  }
-}
-
 extension FixedPoint {
   @inlinable
   public static func *(a: Self, b: Self) -> Self {

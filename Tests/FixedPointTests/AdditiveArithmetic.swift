@@ -53,4 +53,12 @@ final class AdditiveArithmeticTests: XCTestCase {
       }
     }
   }
+  
+  func testNegationInt8Q3() {
+    for a in -Int8.max ... Int8.max {
+      let qa = Int8Q3(bitPattern: a)
+      XCTAssertEqual(Int8Q3(bitPattern: -a), -qa)
+      XCTAssertEqual(Int8Q3(bitPattern: abs(a)), abs(qa))
+    }
+  }
 }

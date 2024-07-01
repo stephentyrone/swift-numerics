@@ -60,7 +60,6 @@ where Magnitude: FixedPoint,
 }
 
 extension FixedPoint {
-  
   /// Validate the invariants on fractionBits; this is a type-level property,
   /// but we can't encode the requirements in the type system. Instead we
   /// enforce them as an assert in initializers so that they are checked
