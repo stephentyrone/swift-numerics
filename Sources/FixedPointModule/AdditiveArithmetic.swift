@@ -24,6 +24,11 @@ extension FixedPoint {
   public static func -(a: Self, b: Self) -> Self {
     Self(bitPattern: a.bitPattern - b.bitPattern)
   }
+  
+  @_transparent
+  public static prefix func -(a: Self) -> Self {
+    zero - a
+  }
 }
 
 extension FixedPoint {
@@ -46,4 +51,9 @@ extension FixedPoint {
   public static func &-=(a: inout Self, b: Self) {
     a.bitPattern &-= b.bitPattern
   }
+}
+
+@_transparent
+public func abs<T: FixedPoint>(_ a: T) -> T {
+  a.bitPattern < .zero ? -a : a
 }

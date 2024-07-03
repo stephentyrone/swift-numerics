@@ -9,35 +9,53 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// A fixed-point arithmetic type.
+/// A binary [fixed-point][fixed] arithmetic type.
 ///
-/// All of the operations that you are likely to need are defined as protocol
-/// extensions. Defining your actual fixed-point types is done as follows:
+/// A fixed-point type is represented by an integer, but we consider a _fixed_
+/// subset of the bits to be fractional. For example, we might define an eight
+/// bit signed type with three fractional bits. We can do this with a minimal
+/// amount bit of boilerplate:
+///
 /// ```swift
-/// // Define your type and conform to FixedPoint. Here we are defining a
-/// // 26.6 signed fixed-point type.
-/// @frozen
-/// struct Int26_6: FixedPoint {
-///   // Define the underlying integer storage. For an unsigned fixed-point
-///   // type, you would use an unsigned integer type. (Note that this
-///   // definition leads to the associatedtype `IntegerType` being
-///   // inferred as Int32; you could also define it explicitly if you
-///   // prefer).
-///   public var bitPattern: Int32
+/// @frozen struct Int8Q3: FixedPoint {
+///   // An eight-bit signed type ...
+///   public var bitPattern: Int8
 ///
-///   // Number of fractional bits. For a signed type, this must be between
-///   // zero and bitWidth-1 (because there must be a sign bit). For an
-///   // unsigned type, it can be as large as bitWidth.
+///   // ... with three fractional bits
 ///   @_transparent
-///   public static var fractionBits = 6
+///   public static var fractionBits: Int { 3 }
 ///
-///   // Provide the following hook to initialize the underlying integer value.
+///   // The only other thing we need to do is to define
+///   // how we construct one from its bit pattern.
 ///   @_transparent
-///   public init(bitPattern: Int32) {
+///   public init(bitPattern: Int8) {
 ///     self.bitPattern = bitPattern
 ///   }
 /// }
 /// ```
+/// `Int8` can represent integers between `-128` and `127`; because we have
+/// three fractional bits, our `Int8Q3` type represents all multiples of 1/8
+/// between `-16` (`-0b10000.000`) and `15.875` (`0b01111.111`).
+///
+/// Addition and subtraction of fixed-point numbers is just addition or
+/// subtraction of the underlying bit patterns:
+/// ```swift
+///                          // bit pattern
+/// let a: Int8Q3 = 1.125    // 0b00001.001
+/// let b: Int8Q3 = 2.5      // 0b00010.100
+/// let c: Int8Q3 = a + b    // 0b00011.101 (3.625)
+/// ```
+/// Just like integer arithmetic, addition and subtraction trap on overflow,
+/// but wrapping operations are provided as `&+` and `&-`:
+/// ```swift
+///                          // bit pattern
+/// let a: Int8Q3 = 15.125   // 0b01111.001
+/// let b: Int8Q3 = 1.5      // 0b00001.100
+/// let c: Int8Q3 = a + b    //   [trap]
+/// let d: Int8Q3 = a &+ b   // 0b10000.101 (-15.375)
+/// ```
+///
+/// [fixed]: https://en.wikipedia.org/wiki/Fixed-point_arithmetic
 public protocol FixedPoint:
   AdditiveArithmetic,
   ExpressibleByIntegerLiteral,

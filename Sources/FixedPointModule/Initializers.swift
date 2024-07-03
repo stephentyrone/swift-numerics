@@ -46,7 +46,7 @@ extension FixedPoint {
   @inlinable
   public init<Other: BinaryFloatingPoint>(
     _ other: Other,
-    rounding rule: FloatingPointRoundingRule = .toNearestOrEven
+    rounding rule: RoundingRule = .toNearestOrEven
   ) {
     Self.invariantCheck()
     let scale = Other(
@@ -54,7 +54,40 @@ extension FixedPoint {
       exponent: Other.Exponent(Self.fractionBits),
       significand: 1
     )
-    self = Self(bitPattern: IntegerType((scale * other).rounded(rule)))
+    switch rule {
+    case .down:
+      self = Self(bitPattern: IntegerType((scale * other).rounded(.down)))
+    case .up:
+      self = Self(bitPattern: IntegerType((scale * other).rounded(.up)))
+    case .towardZero: 
+      self = Self(bitPattern: IntegerType((scale * other).rounded(.towardZero)))
+    case .toNearestOrEven: 
+      self = Self(bitPattern: IntegerType((scale * other).rounded(.toNearestOrEven)))
+    case .toNearestOrAwayFromZero:
+      self = Self(bitPattern: IntegerType((scale * other).rounded(.toNearestOrAwayFromZero)))
+    case .awayFromZero:
+      if other > 0 {
+        self = Self(bitPattern: IntegerType((scale * other).rounded(.up)))
+      } else {
+        self = Self(bitPattern: IntegerType((scale * other).rounded(.down)))
+      }
+    case .toOdd:
+      let scaled = scale * other
+      let rounded = scaled.rounded(.down)
+      let sticky: IntegerType = rounded == scaled ? 1 : 0
+      self = Self(bitPattern: IntegerType(rounded) | sticky)
+    case .toNearestOrUp:
+      self = Self(bitPattern: IntegerType(
+        Other(0.5).nextUp.addingProduct(scale, other).rounded(.down)
+      ))
+    case .stochastically:
+      fatalError()
+    case .requireExact:
+      let scaled = scale * other
+      let rounded = scaled.rounded(.down)
+      precondition(scaled == rounded)
+      self = Self(bitPattern: IntegerType(rounded))
+    }
   }
   
   @inlinable

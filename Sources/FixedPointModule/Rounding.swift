@@ -34,6 +34,8 @@ extension FixedPoint {
       fatalError()
     case .toNearestOrEven:
       fatalError()
+    case .toNearestOrUp:
+      fatalError()
     case .stochastically:
       return Self(bitPattern: (s + .random(in: 0...f)) & i)
     case .requireExact:
