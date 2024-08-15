@@ -9,6 +9,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+import IntegerUtilities
+
 /// A binary [fixed-point][fixed] arithmetic type.
 ///
 /// A fixed-point type is represented by an integer, but we consider a _fixed_
@@ -68,16 +70,51 @@ where Magnitude: FixedPoint,
       Magnitude.IntegerType: UnsignedInteger,
       Magnitude.Magnitude == Magnitude {
   
+  /// The underlying `FixedWidthInteger` type used to represent values of
+  /// this type.
+  ///
+  /// If IntegerType is signed, then this type is signed. If IntegerType
+  /// is unsigned, then this type is unsigned.
   associatedtype IntegerType: FixedWidthInteger
   
-  var bitPattern: IntegerType { get set }
-  
+  /// The number of bits in the representation that have fractional weight.
+  ///
+  /// For instance, a fixed-point type capable of representing multiples of
+  /// 1/8 would have `fractionBits = 3`.
+  ///
+  /// - Precondition: this value must be greater than zero, and less than
+  ///   or equal to the number of value bits in
+  ///   ``/FixedPointModule/FixedPoint/IntegerType``.
   static var fractionBits: Int { get }
   
+  /// The rounding rule to use with the `*`, `&*`, and `/` operators.
+  ///
+  /// > Note:
+  /// If you do not specify a `defaultRounding` rule when defining a
+  /// FixedPoint type, it will default to `.toNearestOrUp`.
+  static var defaultRounding: RoundingRule { get }
+  
+  /// The integer representation underlying this fixed-point value.
+  ///
+  /// For example, if we have a signed eight-bit fixed-point type with
+  /// three fraction bits named `Int8Q3`, then:
+  /// ```
+  /// let fixed: Int8Q3 = 2
+  /// let bits = fixed.bitPattern // 0b00010_000 = 16 as Int8
+  /// ```
+  var bitPattern: IntegerType { get set }
+  
+  /// Create a fixed-point value from an integer bitPattern.
   init(bitPattern: IntegerType)
 }
 
 extension FixedPoint {
+  
+  @_transparent
+  public static var defaultRounding: RoundingRule {
+    .toNearestOrUp
+  }
+  
   /// Validate the invariants on fractionBits; this is a type-level property,
   /// but we can't encode the requirements in the type system. Instead we
   /// enforce them as an assert in initializers so that they are checked
@@ -100,6 +137,14 @@ extension FixedPoint {
   @usableFromInline @inline(__always)
   static internal var unit: IntegerType {
     return 1 << fractionBits
+  }
+  
+  /// Mask to select the ½ bit in `bitPattern`.
+  ///
+  /// Unlike `unit`, this bit always exists, and is never a signbit.
+  @usableFromInline @inline(__always)
+  static internal var half: IntegerType {
+    return 1 << (fractionBits - 1)
   }
   
   /// Mask to select the fractional bits in `bitPattern`.

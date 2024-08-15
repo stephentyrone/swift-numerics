@@ -12,6 +12,11 @@
 import IntegerUtilities
 
 extension FixedPoint {
+  /// Fixed-point addition reporting overflow.
+  ///
+  /// If no overflow occurs, `partialValue` is `self + other` and `overflow`
+  /// is false. If `self + other` would overflow, `partialValue` holds the
+  /// wrapped result, and `overflow` is true.
   @_transparent
   public func addingReportingOverflow(_ other: Self) -> (
     partialValue: Self,
@@ -21,6 +26,11 @@ extension FixedPoint {
     return (Self(bitPattern: r.partialValue), r.overflow)
   }
   
+  /// Fixed-point subtraction reporting overflow.
+  ///
+  /// If no overflow occurs, `partialValue` is `self - other` and `overflow`
+  /// is false. If `self - other` would overflow, `partialValue` holds the
+  /// wrapped result, and `overflow` is true.
   @_transparent
   public func subtractingReportingOverflow(_ other: Self) -> (
     partialValue: Self,

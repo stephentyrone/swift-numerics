@@ -19,7 +19,10 @@ extension FixedPoint {
     let unscaledInteger = IntegerType(integerLiteral: value)
     // If unit is zero, there are only fraction bits, and therefore the
     // only representable integral value is zero.
-    precondition(Self.unit != 0 || unscaledInteger == 0, "\(value) cannot be represented in \(Self.name).")
+    precondition(
+      Self.unit != 0 || unscaledInteger == 0,
+      "\(value) cannot be represented in \(Self.name)."
+    )
     self = Self(bitPattern: unscaledInteger * Self.unit)
   }
 }
@@ -41,6 +44,20 @@ extension FixedPoint {
     Self.invariantCheck()
     // This might trap, but if it does, we would have trapped anyway.
     let unscaledInteger = IntegerType(other)
+    // If unit is zero, there are only fraction bits, and therefore the
+    // only representable integral value is zero.
+    precondition(
+      Self.unit != 0 || unscaledInteger == 0,
+      "\(other) cannot be represented in \(Self.name)."
+    )
+    self = Self(bitPattern: unscaledInteger * Self.unit)
+  }
+  
+  
+  @inlinable
+  public init<Other: BinaryInteger>(clamping other: Other) {
+    Self.invariantCheck()
+    let unscaledInteger = IntegerType(clamping: other)
     // If unit is zero, there are only fraction bits, and therefore the
     // only representable integral value is zero.
     precondition(

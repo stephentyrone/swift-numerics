@@ -46,4 +46,23 @@ extension FixedPoint {
   public func negatedWithSaturation() -> Self {
     Self(bitPattern: self.bitPattern.negatedWithSaturation())
   }
+  
+  /// Saturating fixed-point multiplication
+  ///
+  /// `self * other` clamped to the representable range of the type. If the
+  /// "normal subtraction" `self * other` does not trap, that result is
+  /// returned. Otherwise, `multipliedWithSaturation` produces either `.min`
+  /// (if the true result would be less than `.min`) or `.max` (if the true
+  /// result would be greater than `.max`).
+  @_transparent
+  public func multipliedWithSaturation(
+    by other: Self,
+    rounding rule: RoundingRule = Self.defaultRounding
+  ) -> Self {
+    let (result, overflow) = self.multipliedReportingOverflow(by: other, rounding: rule)
+    if !overflow { return result }
+    return Self(
+      bitPattern: .max &- (self.bitPattern ^ other.bitPattern).signbit
+    )
+  }
 }

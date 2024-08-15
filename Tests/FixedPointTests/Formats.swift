@@ -35,6 +35,14 @@ internal struct UIntQ8: FixedPoint {
   }
 }
 
+internal struct UInt8Q7: FixedPoint {
+  public var bitPattern: UInt8
+  @_transparent public static var fractionBits: Int { 7 }
+  @_transparent public init(bitPattern: UInt8) {
+    self.bitPattern = bitPattern
+  }
+}
+
 internal struct Int32Q6: FixedPoint {
   public var bitPattern: Int32
   @_transparent public static var fractionBits: Int { 6 }

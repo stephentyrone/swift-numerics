@@ -17,7 +17,7 @@ extension FixedPoint where IntegerType: SignedInteger {
   
   @_transparent
   public var magnitude: FixedPointMagnitude<Self> {
-    FixedPointMagnitude(bitPattern: self.bitPattern.magnitude)
+    FixedPointMagnitude(bitPattern: bitPattern.magnitude)
   }
 }
 
@@ -29,18 +29,75 @@ extension FixedPoint where IntegerType: UnsignedInteger {
   public var magnitude: Self { self }
 }
 
-// TODO: consider rounding semantics of * and /: * floors and / truncates
-// They should at least match (flooring), but arguably it would be better
-// if both rounded.
-
 extension FixedPoint {
   @inlinable
+  public func multipliedReportingOverflow(
+    by other: Self,
+    rounding rule: RoundingRule = Self.defaultRounding
+  ) -> (wrappedValue: Self, overflow: Bool) {
+    
+    var prod = bitPattern.multipliedFullWidth(by: other.bitPattern)
+    func roundViaAddition(_ addend: IntegerType.Magnitude) {
+      let (low, carry) = prod.low.addingReportingOverflow(addend)
+      let high = prod.high &+ (carry ? 1 : 0)
+      prod = (high, low)
+    }
+    
+    let frac = IntegerType.Magnitude(truncatingIfNeeded: Self.fractionMask)
+    let unit = IntegerType.Magnitude(truncatingIfNeeded: Self.unit)
+    let half = IntegerType.Magnitude(truncatingIfNeeded: Self.half)
+    let sign = IntegerType.Magnitude(truncatingIfNeeded: prod.high.signbit)
+    
+    switch rule {
+    case .down: break
+    case .up:
+      roundViaAddition(frac)
+    case .towardZero:
+      roundViaAddition(frac & sign)
+    case .awayFromZero:
+      roundViaAddition(frac & ~sign)
+    case .toOdd:
+      if Self.fractionBits == IntegerType.bitWidth {
+        prod.high |= prod.low == 0 ? 0 : 1
+      } else {
+        prod.low |= (prod.low &+ frac) & unit
+      }
+    case .toNearestOrDown:
+      roundViaAddition(half &- 1)
+    case .toNearestOrUp:
+      roundViaAddition(half)
+    case .toNearestOrZero:
+      roundViaAddition(half &- 1 &- sign)
+    case .toNearestOrAway:
+      roundViaAddition(half &+ sign)
+    case .toNearestOrEven:
+      let parity: IntegerType.Magnitude
+      if Self.fractionBits == IntegerType.bitWidth {
+        parity = IntegerType.Magnitude(truncatingIfNeeded: prod.high) & 1
+      } else {
+        parity = prod.low >> Self.fractionBits & 1
+      }
+      roundViaAddition(half &- 1 &+ parity)
+    case .stochastically:
+      roundViaAddition(.random(in: 0 ... frac))
+    case .requireExact:
+      guard prod.low & frac == 0 else {
+        preconditionFailure("Multiplication is not exact.")
+      }
+    }
+    let bitsFromLo = IntegerType(truncatingIfNeeded: prod.low >> Self.fractionBits)
+    let bitsFromHi = prod.high &<< Self.integralBits
+    let lostBits = prod.high >> (Self.fractionBits - (IntegerType.isSigned ? 1 : 0))
+    let overflow = lostBits != prod.high.signbit
+    return (Self(bitPattern: bitsFromHi | bitsFromLo), overflow)
+  }
+  
+  @inlinable
   public static func *(a: Self, b: Self) -> Self {
-    let round = IntegerType.Magnitude(1) << (fractionBits - 1)
-    let product = IntegerType.fullMultiply(a.bitPattern, b.bitPattern, adding: round)
-    let bitsFromLo = IntegerType(truncatingIfNeeded: product.low >> fractionBits)
-    let bitsFromHi = product.high &<< integralBits
-    return Self(bitPattern: bitsFromHi | bitsFromLo)
+    guard case let (result, false) = a.multipliedReportingOverflow(by: b) else {
+      preconditionFailure("Multiplication \(a)*\(b) overflows.")
+    }
+    return result
   }
   
   @_transparent
@@ -49,32 +106,27 @@ extension FixedPoint {
   }
   
   @inlinable
+  public static func &*(a: Self, b: Self) -> Self {
+    return a.multipliedReportingOverflow(by: b).wrappedValue
+  }
+  
+  @_transparent
+  public static func &*=(a: inout Self, b: Self) {
+    a = a &* b
+  }
+  
+  @inlinable
   public static func /(a: Self, b: Self) -> Self {
     let hi = a.bitPattern &>> integralBits
     let lo = IntegerType.Magnitude(truncatingIfNeeded: a.bitPattern) << fractionBits
     // TODO: enforce trap on overflow, consider rounding to nearest
     return Self(bitPattern:
-      b.bitPattern.dividingFullWidth((hi, lo)).quotient
+                  b.bitPattern.dividingFullWidth((hi, lo)).quotient
     )
   }
   
   @_transparent
   public static func /=(a: inout Self, b: Self) {
     a = a / b
-  }
-}
-
-extension FixedPoint {
-  @_transparent
-  public static func &*(a: Self, b: Self) -> Self {
-    let (hi, lo) = a.bitPattern.multipliedFullWidth(by: b.bitPattern)
-    let bitsFromLo = IntegerType(truncatingIfNeeded: lo >> fractionBits)
-    let bitsFromHi = hi &<< (IntegerType.bitWidth - fractionBits)
-    return Self(bitPattern: bitsFromHi | bitsFromLo)
-  }
-  
-  @_transparent
-  public static func &*=(a: inout Self, b: Self) {
-    a = a &* b
   }
 }
