@@ -65,4 +65,28 @@ extension FixedPoint {
       bitPattern: .max &- (self.bitPattern ^ other.bitPattern).signbit
     )
   }
+  
+  /// Saturating fixed-point division
+  ///
+  /// `self / other` clamped to the representable range of the type. If the
+  /// "normal subtraction" `self / other` does not trap, that result is
+  /// returned. Otherwise, `dividedWithSaturation` produces is `.max` (if
+  /// the true result would be greater than `.max`) and `.min` otherwise.
+  ///
+  /// > Note:
+  ///   This operation does not support the rule `.requireExact` because
+  ///   I haven't figured out what I want its semantics to be yet. Please
+  ///   open a github issue if you have a good argument for some desired
+  ///   behavior.
+  @_transparent
+  public func dividedWithSaturation(
+    by other: Self,
+    rounding rule: RoundingRule = Self.defaultRounding
+  ) -> Self {
+    precondition(rule != .requireExact)
+    if let result = self.dividedIfRepresentable(by: other, rounding: rule) {
+      return result
+    }
+    return (self.bitPattern ^ other.bitPattern) >= 0 ? .max : .min
+  }
 }

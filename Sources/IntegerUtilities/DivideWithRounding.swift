@@ -52,7 +52,7 @@ extension BinaryInteger {
     // q is negative) or q or q+1 (if q is positive), because q has been
     // rounded toward zero.
     
-    let qNeg: Self = other.signum() != self.signum() ? 1 : 0
+    let qNeg: Self = other.signum() != signum() ? 1 : 0
     let qAway = q + (1 - 2*qNeg)
     
     switch rule {
@@ -203,74 +203,51 @@ extension SignedInteger {
     //        = (q-1)*other + (r+other)
     //
     // Similarly, if we add 1 to q, we subtract other from r to compensate.
+    
+    let qIsNegative = other.signum() != signum()
+    let roundedAway = qIsNegative ? (q-1, r+other) : (q+1, r-other)
+    
     switch rule {
     case .down:
       // For rounding down, we want to have r match the sign of other
       // rather than self; this means that if the signs of r and other
       // disagree, we have to adjust q downward and r to match.
-      return other.signum() == r.signum() ? (q, r) : (q-1, r+other)
+      return qIsNegative ? (q-1, r+other) : (q, r)
       
     case .up:
       // For rounding up, we want to have r have the opposite sign of
       // other; if not, we adjust q upward and r to match.
-      return other.signum() == r.signum() ? (q+1, r-other) : (q, r)
+      return qIsNegative ? (q, r) : (q+1, r-other)
       
     case .towardZero:
-      // This is exactly what the `/` operator did for us.
       return (q, r)
       
     case .awayFromZero:
-      break
+      return roundedAway
       
     case .toNearestOrDown:
-      // If |r| < |other/2|, we already rounded q to nearest. If the are
-      // equal and q is negative, then we already broke the tie in the right
-      // direction. However, we don't have access to the before-rounding q,
-      // which may have rounded up to zero, losing the sign information, so
-      // we have to look at other and r instead.
-      if 2*r.magnitude  < other.magnitude ||
-         2*r.magnitude == other.magnitude && other.signum() == r.signum() {
-        return (q, r)
-      }
+      let threshold = (other.magnitude - (qIsNegative ? 1 : 0)) >> 1
+      return r.magnitude <= threshold ? (q, r) : roundedAway
       
     case .toNearestOrUp:
-      // If |r| < |other/2|, we already rounded q to nearest. If the are
-      // equal and q is non-negative, then we already broke the tie in the
-      // right direction.
-      if 2*r.magnitude  < other.magnitude ||
-         2*r.magnitude == other.magnitude && other.signum() != r.signum() {
-        return (q, r)
-      }
+      let threshold = (other.magnitude - (qIsNegative ? 0 : 1)) >> 1
+      return r.magnitude <= threshold ? (q, r) : roundedAway
       
     case .toNearestOrZero:
-      // Check first if |r| <= |other/2|. If this holds, we have already
-      // rounded q correctly. Because we're working with magnitudes, we can
-      // safely compute 2r without worrying about overflow, even for fixed-
-      // width types, because r cannot be .min (because |r| < |other| by
-      // construction).
-      if 2*r.magnitude <= other.magnitude {
-        return (q, r)
-      }
+      let threshold = other.magnitude >> 1
+      return r.magnitude <= threshold ? (q, r) : roundedAway
       
     case .toNearestOrAway:
-      // Check first if |r| < |other/2|. If this holds, we already rounded
-      // q to nearest.
-      if 2*r.magnitude < other.magnitude {
-        return (q, r)
-      }
+      let threshold = other.magnitude.shifted(rightBy: 1, rounding: .up)
+      return r.magnitude < threshold ? (q, r) : roundedAway
       
     case .toNearestOrEven:
-      // If |r| < |other/2|, we already rounded q to nearest. If the are
-      // equal and q is even, then we already broke the tie in the right
-      // direction.
-      if 2*r.magnitude  < other.magnitude ||
-         2*r.magnitude == other.magnitude && q.isMultiple(of: 2) {
-        return (q, r)
-      }
+      let threshold = (other.magnitude - (q.magnitude & 1)) >> 1
+      return r.magnitude <= threshold ? (q, r) : roundedAway
       
     case .toOdd:
       // If q is already odd, we have the correct result.
-      if q._lowWord & 1 == 1 { return (q, r) }
+      return q._lowWord & 1 == 1 ? (q, r) : roundedAway
       
     case .stochastically:
       let bmag = other.magnitude
@@ -286,15 +263,11 @@ extension SignedInteger {
         rhi = UInt64(truncatingIfNeeded: rmag >> shift)
       }
       let (sum, car) = rhi.addingReportingOverflow(.random(in: 0 ..< bhi))
-      if sum < bhi && !car { return (q, r) }
+      return sum < bhi && !car ? (q, r) : roundedAway
       
     case .requireExact:
       preconditionFailure("Division was not exact.")
     }
-    
-    // Fallthrough behavior is to round q away from zero and adjust r to
-    // match.
-    return other.signum() == r.signum() ? (q+1, r-other) : (q-1, r+other)
   }
 }
 
