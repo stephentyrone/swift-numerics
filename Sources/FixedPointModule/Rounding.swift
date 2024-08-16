@@ -117,39 +117,39 @@ extension FixedPoint {
   /// a different manner.
   @inlinable
   public func roundingWithSaturation(_ rule: RoundingRule = .toNearestOrEven) -> Self {
-    let s = bitPattern
-    let i = Self.integralMask
-    let f = Self.fractionMask
-    let u = Self.unit
-    let h = Self.half
-    let g = s.signbit
+    let bits = bitPattern
+    let int = Self.integralMask
+    let frac = Self.fractionMask
+    let unit = Self.unit
+    let half = Self.half
+    let sign = bits.signbit
     switch rule {
     case .down:
-      return Self(bitPattern: s & i)
+      return Self(bitPattern: bits & int)
     case .towardZero:
-      return Self(bitPattern: (s &+ (f & g)) & i)
+      return Self(bitPattern: (bits &+ (frac & sign)) & int)
     case .toOdd:
-      return Self(bitPattern: (s & i) | (s &+ f) & u)
+      return Self(bitPattern: (bits & int) | (bits &+ frac) & unit)
     case .up:
-      return Self(bitPattern: s.addingWithSaturation(f) & i)
+      return Self(bitPattern: bits.addingWithSaturation(frac) & int)
     case .awayFromZero:
-      return Self(bitPattern: s.addingWithSaturation(f & ~g) & i)
+      return Self(bitPattern: bits.addingWithSaturation(frac & ~sign) & int)
     case .toNearestOrDown:
-      return Self(bitPattern: s.addingWithSaturation(h &- 1) & i)
+      return Self(bitPattern: bits.addingWithSaturation(half &- 1) & int)
     case .toNearestOrUp:
-      return Self(bitPattern: s.addingWithSaturation(h) & i)
+      return Self(bitPattern: bits.addingWithSaturation(half) & int)
     case .toNearestOrZero:
-      return Self(bitPattern: s.addingWithSaturation(h &- 1 &- g) & i)
+      return Self(bitPattern: bits.addingWithSaturation(half &- 1 &- sign) & int)
     case .toNearestOrAway:
-      return Self(bitPattern: s.addingWithSaturation(h &+ g) & i)
+      return Self(bitPattern: bits.addingWithSaturation(half &+ sign) & int)
     case .toNearestOrEven:
-      let p = s >> Self.fractionBits & 1
-      return Self(bitPattern: s.addingWithSaturation(h &- 1 &+ p) & i)
+      let p = bits >> Self.fractionBits & 1
+      return Self(bitPattern: bits.addingWithSaturation(half &- 1 &+ p) & int)
     case .stochastically:
-      return Self(bitPattern: s.addingWithSaturation(.random(in: 0...f)) & i)
+      return Self(bitPattern: bits.addingWithSaturation(.random(in: 0...frac)) & int)
     case .requireExact:
-      precondition(s & f == 0, "fractional part must be zero")
-      return Self(bitPattern: s & i)
+      precondition(bits & frac == 0, "fractional part must be zero")
+      return Self(bitPattern: bits & int)
     }
   }
 }

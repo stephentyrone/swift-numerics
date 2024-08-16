@@ -257,6 +257,24 @@ extension RoundingRule {
   @inlinable
   @available(*, deprecated, renamed: "toNearestOrAway")
   public static var toNearestOrAwayFromZero: Self { .toNearestOrAway }
+  
+  @_transparent @usableFromInline
+  var negated: Self {
+    switch self {
+    case .down:            return .up
+    case .up:              return .down
+    case .towardZero:      return .towardZero
+    case .awayFromZero:    return .awayFromZero
+    case .toNearestOrDown: return .toNearestOrUp
+    case .toNearestOrUp:   return .toNearestOrDown
+    case .toNearestOrZero: return .toNearestOrZero
+    case .toNearestOrAway: return .toNearestOrAway
+    case .toNearestOrEven: return .toNearestOrEven
+    case .toOdd:           return .toOdd
+    case .stochastically:  return .stochastically
+    case .requireExact:    return .requireExact
+    }
+  }
 }
 
 extension FloatingPoint {

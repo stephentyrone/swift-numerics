@@ -92,7 +92,7 @@ extension FixedPoint {
     return (Self(bitPattern: bitsFromHi | bitsFromLo), overflow)
   }
   
-  @inlinable
+  @_transparent
   public static func *(a: Self, b: Self) -> Self {
     guard case let (result, false) = a.multipliedReportingOverflow(by: b) else {
       preconditionFailure("Multiplication \(a)*\(b) overflows.")
@@ -105,7 +105,7 @@ extension FixedPoint {
     a = a * b
   }
   
-  @inlinable
+  @_transparent
   public static func &*(a: Self, b: Self) -> Self {
     return a.multipliedReportingOverflow(by: b).wrappedValue
   }
@@ -115,14 +115,34 @@ extension FixedPoint {
     a = a &* b
   }
   
+  /// The quotient produced dividing this value by `other`, rounding according
+  /// to the specified `rule`, if it is representable.
+  ///
+  /// If the result is not representable, because one of the following criteria
+  /// hold:
+  /// - the divisor is zero
+  /// - the quotient would overflow
+  /// - the quotient is not exact and the rounding rule is `.requireExact`
+  /// then the result is `nil`.
   @inlinable
+  public func dividedIfRepresentable(
+    by other: Self,
+    rounding rule: RoundingRule = Self.defaultRounding
+  ) -> Self? {
+    let hi = bitPattern &>> Self.integralBits
+    let lo = IntegerType.Magnitude(truncatingIfNeeded: bitPattern) << Self.fractionBits
+    if let quotient = other.bitPattern.dividing((hi, lo), rounding: rule) {
+      return Self(bitPattern: quotient)
+    }
+    return nil
+  }
+  
+  @_transparent
   public static func /(a: Self, b: Self) -> Self {
-    let hi = a.bitPattern &>> integralBits
-    let lo = IntegerType.Magnitude(truncatingIfNeeded: a.bitPattern) << fractionBits
-    // TODO: enforce trap on overflow, consider rounding to nearest
-    return Self(bitPattern:
-                  b.bitPattern.dividingFullWidth((hi, lo)).quotient
-    )
+    guard let result = a.dividedIfRepresentable(by: b) else {
+      preconditionFailure("Division \(a)/\(b) overflows.")
+    }
+    return result
   }
   
   @_transparent

@@ -43,6 +43,18 @@ func referenceMultiplication(_ a: UInt8Q7, _ b: UInt8Q7, rounding rule: Rounding
   }
 }
 
+func referenceDivision(_ a: Int8Q3, _ b: Int8Q3, rounding rule: RoundingRule) -> Int8Q3? {
+  Int8Q3(exactly: (Double(a)/Double(b)*8).rounding(rule)/8)
+}
+
+func referenceDivision(_ a: UIntQ8, _ b: UIntQ8, rounding rule: RoundingRule) -> UIntQ8? {
+  UIntQ8(exactly: (Double(a)/Double(b)*256).rounding(rule)/256)
+}
+
+func referenceDivision(_ a: UInt8Q7, _ b: UInt8Q7, rounding rule: RoundingRule) -> UInt8Q7? {
+  UInt8Q7(exactly: (Double(a)/Double(b)*128).rounding(rule)/128)
+}
+
 final class NumericTests: XCTestCase {
   func testMultiplicationInt8Q3() {
     for a in Int8.min ... Int8.max {
@@ -150,6 +162,85 @@ final class NumericTests: XCTestCase {
               qa.multipliedWithSaturation(by: qb, rounding: rule),
               qr.0
             )
+          }
+        }
+      }
+    }
+  }
+  
+  func testDivisionInt8Q3() {
+    for a in Int8.min ... Int8.max {
+      let qa = Int8Q3(bitPattern: a)
+      XCTAssertEqual(qa.magnitude.bitPattern, a.magnitude)
+      for b in Int8.min ... Int8.max {
+        let qb = Int8Q3(bitPattern: b)
+        if let qr = referenceDivision(qa, qb, rounding: .toNearestOrUp) {
+          let qp = qa/qb
+          if qp != qr {
+            XCTFail("\(qa)/\(qb) was \(qp), expected \(qr); real value: (\(Double(qa)*Double(qb)))")
+          }
+        }
+      }
+    }
+  }
+  
+  func testDivisionInt8Q3WithRounding() {
+    for rule in [
+      RoundingRule.down, .up, .towardZero, .awayFromZero,
+      .toNearestOrDown, .toNearestOrUp, .toNearestOrZero, .toNearestOrAway,
+      .toNearestOrEven, .toOdd
+    ] {
+      for a in Int8.min ... Int8.max {
+        let qa = Int8Q3(bitPattern: a)
+        XCTAssertEqual(qa.magnitude.bitPattern, a.magnitude)
+        for b in Int8.min ... Int8.max {
+          let qb = Int8Q3(bitPattern: b)
+          let qr = referenceDivision(qa, qb, rounding: rule)
+          let qp = qa.dividedIfRepresentable(by: qb, rounding: rule)
+          if qp != qr {
+            XCTFail("\(qa).divided(by: \(qb), rounding: \(rule)) was \(qp), expected \(qr); real value: (\(Double(qa)/Double(qb)))")
+          }
+        }
+      }
+    }
+  }
+  
+  func testDivisionUIntQ8WithRounding() {
+    for rule in [
+      RoundingRule.down, .up, .towardZero, .awayFromZero,
+      .toNearestOrDown, .toNearestOrUp, .toNearestOrZero, .toNearestOrAway,
+      .toNearestOrEven, .toOdd
+    ] {
+      for a in 0 ... UInt8.max {
+        let qa = UIntQ8(bitPattern: a)
+        XCTAssertEqual(qa.magnitude.bitPattern, a.magnitude)
+        for b in 0 ... UInt8.max {
+          let qb = UIntQ8(bitPattern: b)
+          let qr = referenceDivision(qa, qb, rounding: rule)
+          let qp = qa.dividedIfRepresentable(by: qb, rounding: rule)
+          if qp != qr {
+            XCTFail("\(qa).divided(by: \(qb), rounding: \(rule)) was \(qp), expected \(qr); real value: (\(Double(qa)/Double(qb)))")
+          }
+        }
+      }
+    }
+  }
+  
+  func testDivisionUInt8Q7WithRounding() {
+    for rule in [
+      RoundingRule.down, .up, .towardZero, .awayFromZero,
+      .toNearestOrDown, .toNearestOrUp, .toNearestOrZero, .toNearestOrAway,
+      .toNearestOrEven, .toOdd
+    ] {
+      for a in 0 ... UInt8.max {
+        let qa = UInt8Q7(bitPattern: a)
+        XCTAssertEqual(qa.magnitude.bitPattern, a.magnitude)
+        for b in 0 ... UInt8.max {
+          let qb = UInt8Q7(bitPattern: b)
+          let qr = referenceDivision(qa, qb, rounding: rule)
+          let qp = qa.dividedIfRepresentable(by: qb, rounding: rule)
+          if qp != qr {
+            XCTFail("\(qa).divided(by: \(qb), rounding: \(rule)) was \(qp), expected \(qr); real value: (\(Double(qa)/Double(qb)))")
           }
         }
       }
