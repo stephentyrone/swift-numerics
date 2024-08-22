@@ -20,6 +20,13 @@ extension FixedWidthInteger {
     return self < .zero ? ~.zero : .zero
   }
   
+  /// The number of "value bits" (i.e. non-sign bits) used to represent
+  /// values of the type.
+  @_transparent
+  public static var valueBits: Int {
+    bitWidth &- (isSigned ? 1 : 0)
+  }
+  
   /// Saturating integer addition
   ///
   /// `self + other` clamped to the representable range of the type. e.g.:
@@ -139,9 +146,8 @@ extension FixedWidthInteger {
     // - unsigned 0b0010_1111 << 2 does not overflow,
     //   because 0b0010_0000 >> 6 is 0b0000_0000, which
     //   does equal 0b0000_0000.
-    let valueBits = Self.bitWidth &- (Self.isSigned ? 1 : 0)
     let wrapped = self &<< count
-    let complement = valueBits &- count
+    let complement = Self.valueBits &- count
     return self &>> complement == signbit ? wrapped : clamped
   }
   
