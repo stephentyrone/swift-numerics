@@ -24,12 +24,14 @@ import IntegerUtilities
 ///   public var bitPattern: Int8
 ///
 ///   // ... with three fractional bits
-///   @_transparent
 ///   public static var fractionBits: Int { 3 }
+///
+///   // If we want, we can customize the rounding policy of the *, &*, /
+///   // operators (otherwise, it defaults to .toNearestOrUp)
+///   public static var defaultRounding: RoundingRule { .toNearestOrEven }
 ///
 ///   // The only other thing we need to do is to define
 ///   // how we construct one from its bit pattern.
-///   @_transparent
 ///   public init(bitPattern: Int8) {
 ///     self.bitPattern = bitPattern
 ///   }
@@ -182,14 +184,24 @@ extension FixedPoint {
     hasher.combine(bitPattern)
   }
   
+  /// The minimum representable number in this type.
   @_transparent
   public static var min: Self {
     Self(bitPattern: .min)
   }
   
+  /// The maximum representable number in this type.
   @_transparent
   public static var max: Self {
     Self(bitPattern: .max)
+  }
+  
+  /// The least-magnitude number representable in this type.
+  ///
+  /// Every number is an integral multiple of this value.
+  @_transparent
+  public static var leastMagnitude: Self {
+    Self(bitPattern: 1)
   }
   
   @_transparent @usableFromInline
