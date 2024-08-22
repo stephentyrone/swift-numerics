@@ -52,14 +52,7 @@ extension FixedWidthInteger {
       guard let quotient = magnitude.dividing(unsignedDividend, rounding: unsignedRule) else {
         return nil
       }
-      // Apply the correct sign to the quotient, returning nil if this
-      // overflows.
-      if resultIsNegative {
-        guard quotient <= Magnitude(truncatingIfNeeded: Self.min) else { return nil }
-        return Self(truncatingIfNeeded: 0 &- quotient)
-      } else {
-        return Self(exactly: quotient)
-      }
+      return Self(magnitude: quotient, negated: resultIsNegative)
     } else {
       let addend: Magnitude
       switch rule {
@@ -107,6 +100,52 @@ extension FixedWidthInteger {
       (adjusted.high, carry) = dividend.high.addingReportingOverflow(carry ? 1 : 0)
       guard !carry && adjusted.high < self else { return nil }
       return dividingFullWidth(adjusted).quotient
+    }
+  }
+  
+  @usableFromInline
+  init?<Other: UnsignedInteger>(
+    magnitude other: Other,
+    negated: Bool
+  ) {
+    if negated {
+      guard other <= Self.min.magnitude else { return nil }
+      self = 0 &- Self(truncatingIfNeeded: other)
+    } else {
+      guard other <= Self.max else { return nil }
+      self = Self(truncatingIfNeeded: other)
+    }
+  }
+  
+  @inlinable
+  public func multiplied<Other: FixedWidthInteger>(
+    by numerator: Other,
+    dividedBy denominator: Other,
+    rounding rule: RoundingRule = .down
+  ) -> Self? {
+    let resultIsNegative = (self < 0) != (numerator^denominator < 0)
+    let magnitudeRule = resultIsNegative ? rule.negated : rule
+    
+    func mulDivMagnitudes<Compute: FixedWidthInteger & UnsignedInteger>(
+      _ x: Compute, _ a: Compute, _ b: Compute
+    ) -> Self? {
+      let p = x.multipliedFullWidth(by: a)
+      guard let q = b.dividing(p, rounding: magnitudeRule) else { return nil }
+      return Self(magnitude: q, negated: resultIsNegative)
+    }
+    
+    if Magnitude.bitWidth > Other.Magnitude.bitWidth {
+      return mulDivMagnitudes(
+        magnitude,
+        Magnitude(truncatingIfNeeded: numerator.magnitude),
+        Magnitude(truncatingIfNeeded: denominator.magnitude)
+      )
+    } else {
+      return mulDivMagnitudes(
+        Other.Magnitude(truncatingIfNeeded: magnitude),
+        numerator.magnitude,
+        denominator.magnitude
+      )
     }
   }
 }
