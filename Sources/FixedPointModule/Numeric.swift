@@ -150,3 +150,43 @@ extension FixedPoint {
     a = a / b
   }
 }
+
+extension FixedPoint {
+  /// `self * ratio`, rounded according to `rule` if that value is
+  /// representable without overflow.
+  ///
+  /// If the result would overflow, `nil` is returned. Underflow rounds
+  /// to either zero or ±leastMagnitude without reporting an error. 
+  @inlinable
+  public func scaledIfRepresentable<Other: FixedPoint>(
+    by ratio: (numerator: Other, denominator: Other),
+    rounding rule: RoundingRule = Self.defaultRounding
+  ) -> Self? {
+    bitPattern.multiplied(
+      by: ratio.numerator.bitPattern,
+      dividedBy: ratio.denominator.bitPattern,
+      rounding: rule
+    ).map { Self(bitPattern: $0) }
+  }
+  
+  /// `self * ratio`, rounded according to `rule` if that value is
+  /// representable without overflow.
+  ///
+  /// For example, `scaledIfRepresentable(by: (2, 3), rounding: .toNearestOrUp)`
+  /// multiplies `self` by two-thirds, rounding the result to nearest with
+  /// ties broken towards +infinity.
+  ///
+  /// If the result would overflow, `nil` is returned. Underflow rounds
+  /// to either zero or ±leastMagnitude without reporting an error.
+  @inlinable
+  public func scaledIfRepresentable<Other: FixedWidthInteger>(
+    by ratio: (numerator: Other, denominator: Other),
+    rounding rule: RoundingRule = Self.defaultRounding
+  ) -> Self? {
+    bitPattern.multiplied(
+      by: ratio.numerator,
+      dividedBy: ratio.denominator,
+      rounding: rule
+    ).map { Self(bitPattern: $0) }
+  }
+}
