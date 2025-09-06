@@ -34,7 +34,7 @@ extension Augmented {
   ///
   /// Postconditions:
   ///
-  /// - If `head` is normal, then `abs(tail) < head.ulp`.
+  /// - If `head` is finite, then `abs(tail) < head.ulp`.
   ///   Assuming IEEE 754 default rounding, `abs(tail) <= head.ulp/2`.
   /// - If both `head` and `tail` are normal, then `a * b` is exactly
   ///   equal to `head + tail` when computed as real numbers.
@@ -144,5 +144,63 @@ extension Augmented {
     let y = head - x
     let tail = (a - x) + (b - y)
     return (head, tail)
+  }
+  
+  /// The quotient `a/b` represented as an implicit sum `head + tail`.
+  ///
+  /// So long as `a/b` does not overflow or underflow and `a` is not close
+  /// to the underflow boundary, the only source of error in the final result
+  /// is the division that produces `tail`, and the result is the most
+  /// accurate possible. This "best possible" property does not hold in
+  /// if either `a` or `a/b` is tiny.
+  ///
+  /// Unlike ``product(_:_:)``, the result of this function is not generally
+  /// exact (because the exact quotient of two floating-point numbers does not
+  /// generally have a finite binary or decimal expansion).
+  @_transparent
+  public static func quotient<T: FloatingPoint>(
+    _ a: T, _ b: T
+  ) -> (head: T, tail: T) {
+    let q = a/b
+    let r = a.addingProduct(-q, b)
+    return (q, r/b)
+  }
+  
+  /// The square root of `a` represented as an implicit sum `head + tail`.
+  ///
+  /// `head` is the correctly-rounded square root. If no overflow or underflow
+  /// occurs (in particular, if the residual `a - head*head` can be computed
+  /// with full precision), then `tail` represents an approximation of the
+  /// rounding error incurred in computing `head`.
+  ///
+  /// If `a` is close to the underflow boundary, then `tail` will contain less
+  /// (possibly no) additional information about the quotient. It would be
+  /// possible to detect this condition and handle it via careful rescaling
+  /// of the computation, but this is something that must be handled by the
+  /// caller if desired.
+  ///
+  /// Unlike ``product(_:_:)`` or ``sum(_:_:)``, it is generally _not the case_
+  /// that the exact quotient is the sum of `head` and `tail` computed in exact
+  /// arithmetic (it cannot be, because in general the exact quotient does not
+  /// have a finite binary expansion).
+  @_transparent
+  public static func squareRoot<T: FloatingPoint>(
+    _ a: T
+  ) -> (head: T, tail: T) {
+    let q = a.squareRoot()
+    let r = a.addingProduct(-q, q)
+    // Refine q with a two-term Taylor series approximation:
+    //
+    //   a = q² + r
+    //  √a = √(q² + r)
+    //     = q * √(1 + r/q²)
+    //     = q * (1 + r/2q² + O(r²/q⁴))
+    //     = q + r/2q + q O(r²/q⁴)
+    //
+    // Because r ~ ulp(a) and q ~ sqrt(a), the discarded terms from the series
+    // are like q * ulpOfOne², and therefore cannot contribute more than a
+    // small multiple of tail.ulp, so we can drop them while maintaining a
+    // good error bound.
+    return (q, r/(2*q))
   }
 }
