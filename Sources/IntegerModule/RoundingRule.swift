@@ -209,7 +209,27 @@ extension RoundingRule {
   /// > Deprecated: Use `.toNearestOrAway` instead.
   @inlinable
   @available(*, deprecated, renamed: "toNearestOrAway")
-  public static var toNearestOrAwayFromZero: Self { .toNearestOrAway }
+  public static var toNearestOrAwayFromZero: RoundingRule { .toNearestOrAway }
+  
+  /// "Negates" this rounding rule; if `x` rounded according to `rule`
+  /// produces a result `y`, then `-x` rounded according to `rule.negated`
+  /// produces the result `-y`.
+  @_transparent
+  public var negated: RoundingRule {
+    switch self {
+    case .down:            return .up
+    case .up:              return .down
+    case .towardZero:      return .towardZero
+    case .awayFromZero:    return .awayFromZero
+    case .toNearestOrDown: return .toNearestOrUp
+    case .toNearestOrUp:   return .toNearestOrDown
+    case .toNearestOrZero: return .toNearestOrZero
+    case .toNearestOrAway: return .toNearestOrAway
+    case .toNearestOrEven: return .toNearestOrEven
+    case .toOdd:           return .toOdd
+    case .requireExact:    return .requireExact
+    }
+  }
 }
 
 extension FloatingPoint {

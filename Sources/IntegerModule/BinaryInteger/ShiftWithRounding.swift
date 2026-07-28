@@ -1,8 +1,8 @@
-//===--- ShiftWithRounding.swift ------------------------------*- swift -*-===//
+//===--- Shift.swift ------------------------------------------*- swift -*-===//
 //
 // This source file is part of the Swift Numerics open source project
 //
-// Copyright (c) 2021 Apple Inc. and the Swift Numerics project authors
+// Copyright (c) 2021-2026 Apple Inc. and the Swift Numerics project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -12,8 +12,8 @@
 extension BinaryInteger {
   /// `self` divided by 2^(`count`), rounding the result according to `rule`.
   ///
-  /// The default rounding rule is ``RoundingRule/down``, which matches the
-  /// behavior of the `>>` operator from the standard library.
+  /// The default rounding rule is `.down`, which matches the behavior of
+  /// the `>>` operator from the standard library.
   ///
   /// Some examples of different rounding rules:
   ///
@@ -27,10 +27,6 @@ extension BinaryInteger {
   ///     // is odd.
   ///     3.shifted(rightBy: 1, rounding: .toOdd)
   ///
-  ///     // 7/4 = 1.75, so the result is 1 with probability 1/4, or 2
-  ///     // with probability 3/4.
-  ///     7.shifted(rightBy: 2, rounding: .stochastically)
-  ///
   ///     // 4/4 is exactly 1, so this does not trap.
   ///     4.shifted(rightBy: 2, rounding: .requireExact)
   ///
@@ -41,21 +37,55 @@ extension BinaryInteger {
   ///
   ///     a.shifted(rightBy: count, rounding: rule)
   ///     a.divided(by: 1 << count, rounding: rule)
-  @inlinable
-  public func shifted(
-    rightBy count: Int,
+  @_transparent
+  public func shifted<Count: BinaryInteger>(
+    rightBy count: Count,
     rounding rule: RoundingRule = .down
   ) -> Self {
+    self.shifted(
+      rightBy: Int(clamping: count),
+      rounding: rule
+    ).result
+  }
+  
+  /// `self` multiplied by 2^(`count`), rounding the result according
+  /// to `rule` if `count` is negative.
+  ///
+  /// The default rounding rule is `.down`, which matches the behavior of
+  /// the `<<` operator from the standard library.
+  @_transparent
+  public func shifted<Count: BinaryInteger>(
+    leftBy count: Count,
+    rounding rule: RoundingRule = .down
+  ) -> Self {
+    self.shifted(
+      rightBy: Int(clamping: count).negatedWithSaturation(),
+      rounding: rule
+    ).result
+  }
+  
+  @inlinable
+  package func shifted(
+    rightBy count: Int,
+    rounding rule: RoundingRule = .down
+  ) -> (result: Self, didRound: Bool) {
     // Easiest case: count is zero or negative, so shift is always exact;
     // delegate to the normal >> operator.
-    if count <= 0 { return self >> count }
+    if count <= 0 {
+      return (self >> count, false)
+    }
+    // If count is over-large, we round in two steps; the first consumes all
+    // but bitWidth-1 bits, and is done with sticky rounding
     if count >= bitWidth {
       // Note: what follows would cause an infinite loop if bitWidth <= 1.
       // This will essentially never happen, but in the highly unlikely event
       // that we encounter such a case, we promote to Int8, do the shift, and
       // then convert back to the appropriate result type.
       if bitWidth <= 1 {
-        return Self(Int8(self).shifted(rightBy: count, rounding: rule))
+        let (wideResult, didRound) = Int8(self).shifted(
+          rightBy: count, rounding: rule
+        )
+        return (Self(wideResult), didRound)
       }
       // That pathological case taken care of, we can now handle over-wide
       // shifts by first shifting all but bitWidth - 1 bits with sticky
@@ -104,74 +134,34 @@ extension BinaryInteger {
     let mask = Magnitude(1) << count - 1
     let lost = Magnitude(truncatingIfNeeded: self) & mask
     let floor = self >> count
-    let ceiling = floor + (lost == 0 ? 0 : 1)
+    if lost == 0 { return (floor, false) }
     let half: Magnitude = (1 as Magnitude) << (count &- 1)
     switch rule {
     case .down:
-      return floor
+      return (floor, true)
     case .up:
-      return ceiling
+      return (floor + 1, true)
     case .towardZero:
-      return self > 0 ? floor : ceiling
+      return (floor + (self < 0 ? 1 : 0), true)
     case .awayFromZero:
-      return self < 0 ? floor : ceiling
+      return (floor + (self > 0 ? 1 : 0), true)
     case .toNearestOrDown:
-      return floor + Self((lost + (half - 1)) >> count)
+      return (floor + Self((lost + (half - 1)) >> count), true)
     case .toNearestOrUp:
-      return floor + Self((lost + half) >> count)
+      return (floor + Self((lost + half) >> count), true)
     case .toNearestOrZero:
       let round = half - (self < 0 ? 0 : 1)
-      return floor + Self((round + lost) >> count)
+      return (floor + Self((round + lost) >> count), true)
     case .toNearestOrAway:
       let round = half - (self > 0 ? 0 : 1)
-      return floor + Self((round + lost) >> count)
+      return (floor + Self((round + lost) >> count), true)
     case .toNearestOrEven:
       let round = mask >> 1 + Magnitude(floor & 1)
-      return floor + Self((round + lost) >> count)
+      return (floor + Self((round + lost) >> count), true)
     case .toOdd:
-      return floor | (lost == 0 ? 0 : 1)
+      return (floor | (lost == 0 ? 0 : 1), true)
     case .requireExact:
-      precondition(lost == 0, "shift was not exact.")
-      return floor
+      fatalError("shift was not exact.")
     }
-  }
-  
-  /// `self` divided by 2^(`count`), rounding the result according to `rule`.
-  ///
-  /// The default rounding rule is ``RoundingRule/down``, which matches the
-  /// behavior of the `>>` operator from the standard library.
-  ///
-  /// Some examples of different rounding rules:
-  ///
-  ///     // 3/2 is 1.5, which rounds (down by default) to 1.
-  ///     3.shifted(rightBy: 1)
-  ///
-  ///     // 1.5 rounds up to 2.
-  ///     3.shifted(rightBy: 1, rounding: .up)
-  ///
-  ///     // The two closest values are 1 and 2, 1 is returned because it
-  ///     // is odd.
-  ///     3.shifted(rightBy: 1, rounding: .toOdd)
-  ///
-  ///     // 7/4 = 1.75, so the result is 1 with probability 1/4, or 2
-  ///     // with probability 3/4.
-  ///     7.shifted(rightBy: 2, rounding: .stochastically)
-  ///
-  ///     // 4/4 is exactly 1, so this does not trap.
-  ///     4.shifted(rightBy: 2, rounding: .requireExact)
-  ///
-  ///     // 5/2 is 2.5, which is not an integer, so this traps.
-  ///     5.shifted(rightBy: 1, rounding: .requireExact)
-  ///
-  /// When `Self(1) << count` is positive, the following are equivalent:
-  ///
-  ///     a.shifted(rightBy: count, rounding: rule)
-  ///     a.divided(by: 1 << count, rounding: rule)
-  @_transparent
-  public func shifted<Count: BinaryInteger>(
-    rightBy count: Count,
-    rounding rule: RoundingRule = .down
-  ) -> Self {
-    self.shifted(rightBy: Int(clamping: count), rounding: rule)
   }
 }

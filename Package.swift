@@ -24,29 +24,31 @@ let package = Package(
   ],
   
   targets: [
+    // MARK: - Umbrella module
+    .target(
+      name: "Numerics",
+      dependencies: ["ComplexModule", "IntegerModule", "RealModule"],
+      exclude: ["CMakeLists.txt"]
+    ),
+    
     // MARK: - Public API
     .target(
       name: "ComplexModule",
       dependencies: ["RealModule"],
-      exclude: excludedFilenames
+      exclude: ["CMakeLists.txt"]
     ),
     
     .target(
-      name: "IntegerUtilities",
+      name: "IntegerModule",
       dependencies: [],
-      exclude: excludedFilenames
-    ),
-    
-    .target(
-      name: "Numerics",
-      dependencies: ["ComplexModule", "IntegerUtilities", "RealModule"],
-      exclude: excludedFilenames
+      exclude: excludedFilenames,
+      swiftSettings: [.enableExperimentalFeature("BuiltinModule")]
     ),
     
     .target(
       name: "RealModule",
       dependencies: ["_NumericsShims"],
-      exclude: excludedFilenames,
+      exclude: ["CMakeLists.txt"],
       linkerSettings: [
         .linkedLibrary("m", .when(platforms: [.linux, .android]))
       ]
@@ -72,8 +74,8 @@ let package = Package(
     ),
     
     .testTarget(
-      name: "IntegerUtilitiesTests",
-      dependencies: ["IntegerUtilities", "_TestSupport"],
+      name: "IntegerTests",
+      dependencies: ["IntegerModule", "_TestSupport"],
       exclude: ["CMakeLists.txt"]
     ),
     

@@ -11,5 +11,5 @@
 
 // A module that re-exports the complete Swift Numerics public API.
 @_exported import ComplexModule
-@_exported import IntegerUtilities
+@_exported import IntegerModule
 @_exported import RealModule
